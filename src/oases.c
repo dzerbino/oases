@@ -1,5 +1,5 @@
 /*
-    Copyright 2009,2010 Daniel Zerbino (zerbino@ebi.ac.uk)
+    Copyright 2009,2010 Daniel Zerbino (dzerbino@soe.ucsc.edu)
 
     This file is part of Oases.
 
@@ -22,6 +22,10 @@
 
 #include "run.h"
 #include "transcript.h"
+
+static int OASES_VERSION_NUMBER = 0;
+static int OASES_RELEASE_NUMBER = 1;
+static int OASES_UPDATE_NUMBER = 1;
 
 static void printUsage()
 {
@@ -79,9 +83,9 @@ int main(int argc, char **argv)
 	// Error message
 	if (argc == 1) {
 		puts("oases - De novo transcriptome assembler for the Velvet package");
-		printf("Version %i.%i.%2.2i\n", VERSION_NUMBER,
-		       RELEASE_NUMBER, UPDATE_NUMBER);
-		puts("\nCopyright 2009,2010 Daniel Zerbino (zerbino@ebi.ac.uk)");
+		printf("Version %i.%i.%2.2i\n", OASES_VERSION_NUMBER,
+		       OASES_RELEASE_NUMBER, OASES_UPDATE_NUMBER);
+		puts("\nCopyright 2009,2010 Daniel Zerbino (dzerbino@soe.ucsc.edu)");
 		puts("This is free software; see the source for copying conditions.  There is NO");
 		puts("warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 		puts("Compilation settings:");

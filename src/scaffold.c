@@ -1,5 +1,5 @@
 /*
-    Copyright 2009,2010 Daniel Zerbino (zerbino@ebi.ac.uk)
+    Copyright 2009,2010 Daniel Zerbino (dzerbino@soe.ucsc.edu)
 
     This file is part of Oases.
 
