@@ -62,7 +62,7 @@ struct readOccurence_st {
 
 // Global params
 static Graph *graph = NULL;
-static IDnum UNRELIABLE_CONNECTION_CUTOFF = 5;
+static IDnum UNRELIABLE_CONNECTION_CUTOFF = 4;
 
 // Global pointers
 static Connection **scaffold = NULL;

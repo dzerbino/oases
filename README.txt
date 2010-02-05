@@ -32,12 +32,15 @@ Normally, with a GNU environment, just type:
 ----------------------------------------------------------------------------------
 C/ RUNNING
 
-You must first process the reads using Velvet. This means that you must choose a 
-hash length at this stage (cf. the Velvet manual). DO NOT set a coverage cutoff,
-you should set that when running oases. Also, remember to turn on the -read_trkg 
-option when running velveth. As an example:
+You must first process the reads using Velvet: 
+* you must choose a hash length at this stage (cf. the Velvet manual),
+* DO NOT set a coverage cutoff, you should set that when running oases, 
+* DO NOT set an expected coverage,
+* remember to turn on the -read_trkg option when running velveth. 
 
-> velveth new_directory 21 -shortPaired reads.fa
+As an example:
+
+> velveth new_directory 21 -shortPaired data/test_reads.fa
 > velvetg new_directory -reads_trkg yes
 
 You can now run Oases on the Velvet working directory which has just been created.

@@ -25,7 +25,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 1;
+static int OASES_UPDATE_NUMBER = 2;
 
 static void printUsage()
 {
@@ -35,12 +35,13 @@ static void printUsage()
 	puts("\tdirectory\t\t\t: working directory name");
 	puts("");
 	puts("Standard options:");
-	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 10)");
+	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 4)");
 	puts("\t-ins_length2 <integer>\t\t: expected distance between two paired-end reads in the second short-read dataset (default: no read pairing)");
 	puts("\t-ins_length_long <integer>\t: expected distance between two long paired-end reads (default: no read pairing)");
 	puts("\t-ins_length*_sd <integer>\t: est. standard deviation of respective dataset (default: 10\% of corresponding length)");
 	puts("\t\t[replace '*' by nothing, '2' or '_long' as necessary]");
-	puts("\t-cov_cutoff <floating-point|auto>\t: removal of low coverage nodes");
+	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default 3)");
+	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default 3)");
 	puts("\t--help\t\t\t\t: this help message");
 	puts("");
 	puts("Output:");
@@ -70,8 +71,9 @@ int main(int argc, char **argv)
 	IDnum locusCount;
 	ReadSet *reads;
 	Coordinate *lengths;
-	double coverageCutoff = -1;
+	double coverageCutoff = 3;
 	boolean *dubious = NULL;
+	Coordinate minTransLength = -1;
 
 	setProgramName("oases");
 
@@ -117,6 +119,9 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(arg, "-cov_cutoff") == 0) {
 			sscanf(argv[arg_index], "%lf", &coverageCutoff);
+		} else if (strcmp(arg, "-min_trans_lgth") == 0) {
+			sscanf(argv[arg_index], "%lli", &longlong_var);
+			minTransLength = (Coordinate) longlong_var;
 		} else if (strcmp(arg, "-min_pair_count") == 0) {
 			sscanf(argv[arg_index], "%i", &arg_int);
 			setUnreliableConnectionCutoff_oases(arg_int);
@@ -234,25 +239,18 @@ int main(int argc, char **argv)
 	loci =
 	    extractGraphLoci(graph, reads, dubious, lengths, &locusCount);
 
-	computeHighlyExpressedTranscripts(loci, locusCount);
+	computeTranscripts(loci, locusCount);
 	strcpy(transcriptFilename, directory);
-	strcat(transcriptFilename, "/highly_expressed_transcripts.fa");
-	exportTranscripts(loci, locusCount, transcriptFilename);
+	strcat(transcriptFilename, "/transcripts.fa");
+	exportTranscripts(loci, locusCount, transcriptFilename, minTransLength);
 	strcpy(transcriptFilename, directory);
 	strcat(transcriptFilename,
-	       "/contig-ordering-highly-expressed.txt");
-	exportContigOrders(loci, locusCount, transcriptFilename);
+	       "/contig-ordering.txt");
+	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength);
+	printf("Finished heuristic approach, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
 	cleanTranscriptMemory(loci, locusCount);
 
 	removeIndirectConnections();
-	computePlausibleTranscripts(loci, locusCount);
-	strcpy(transcriptFilename, directory);
-	strcat(transcriptFilename, "/plausible_transcripts.fa");
-	exportTranscripts(loci, locusCount, transcriptFilename);
-	strcpy(transcriptFilename, directory);
-	strcat(transcriptFilename, "/contig-ordering-plausible.txt");
-	exportContigOrders(loci, locusCount, transcriptFilename);
-	cleanTranscriptMemory(loci, locusCount);
 
 	computeASEvents(loci, locusCount);
 	strcpy(eventFilename, directory);

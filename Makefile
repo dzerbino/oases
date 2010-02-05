@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 DEBUG = -g
-LDFLAGS = -lm -lz
+LDFLAGS = -lm
 OPT = -O3
 MAXKMERLENGTH=31
 CATEGORIES=2
@@ -13,7 +13,14 @@ VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfi
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
 VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 
+Z_LIB_DIR=$(VELVET_DIR)/third-party/zlib-1.2.3
+Z_LIB_FILES=$(Z_LIB_DIR)/*.o
+
 # Mac OS users: uncomment the following lines
+# Z_LIB_FILES=
+# LDFLAGS = -lm -lz
+# CFLAGS = -Wall -m64
+
 # Sparc/Solaris users: uncomment the following line
 # CFLAGS = -Wall -m64
 
@@ -36,11 +43,11 @@ cleanobj:
 	-rm obj/*.o obj/dbg/*.o 
 
 oases : cleanobj obj $(OBJ) 
-	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES)
+	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) ${Z_LIB_FILES}
 
 
 debug : cleanobj velvetdbg obj/dbg $(OBJDBG)
-	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES)
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES) ${Z_LIB_FILES}
 
 color : override DEF := $(DEF) -D COLOR
 color : cleanobj obj $(OBJ)

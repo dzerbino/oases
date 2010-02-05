@@ -747,9 +747,9 @@ static void produceTranscript(Locus * locus, IDnum nodesInList)
 			transcript->distances[index - 1] =
 			    getConnectionDistance((getConnectionBetweenNodes(transcript->contigs[index - 1], getTwinNode(node))));
 			transcript->distances[index - 1] -=
-			    getNodeLength(node);
+			    getNodeLength(node)/2;
 			transcript->distances[index - 1] -=
-			    getNodeLength(transcript->contigs[index - 1]);
+			    getNodeLength(transcript->contigs[index - 1])/2;
 			if (transcript->distances[index - 1] < 0)
 				transcript->distances[index - 1] = 0;
 		}
@@ -858,22 +858,6 @@ static void computeHighlyExpressedLocusTranscripts(Locus * locus,
 	setLocusStatus(locus, true);
 	setLocusConnectionStatus(locus, false);
 	setLocusStatus(locus, false);
-}
-
-void computeHighlyExpressedTranscripts(Locus * loci, IDnum locusCount)
-{
-	IDnum index;
-	double *scores = callocOrExit(2 * nodeCount(graph), double);
-
-	puts("Computing highly expressed loci...");
-
-	resetNodeStatus(graph);
-
-	for (index = 0; index < locusCount; index++)
-		computeHighlyExpressedLocusTranscripts(&(loci[index]),
-						       scores);
-
-	free(scores);
 }
 
 void setUnreliableConnectionCutoff_oases(int val)
@@ -987,18 +971,31 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 		fprintf(outfile, "\n");
 }
 
+static Coordinate getTranscriptLength(Transcript * transcript) {
+	Coordinate total = 0;
+	IDnum index;
+
+	for (index = 0; index < transcript->contigCount; index++) {
+		total += getNodeLength(transcript->contigs[index]);
+		total += transcript->distances[index];	
+	}
+
+	return total;
+}
+
 static void exportLocusTranscripts(Locus * locus, IDnum locusID,
-				   FILE * outfile)
+				   FILE * outfile, Coordinate minTransLength)
 {
 	IDnum index = 0;
 	Transcript *transcript;
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		exportTranscript(transcript, locusID, index++, outfile);
+		if (getTranscriptLength(transcript) > minTransLength)
+			exportTranscript(transcript, locusID, index++, outfile);
 }
 
-void exportTranscripts(Locus * loci, IDnum locusCount, char *filename)
+void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength)
 {
 	FILE *outfile = fopen(filename, "w");
 	IDnum index;
@@ -1006,7 +1003,7 @@ void exportTranscripts(Locus * loci, IDnum locusCount, char *filename)
 	printf("Exporting transcripts to %s\n", filename);
 
 	for (index = 0; index < locusCount; index++)
-		exportLocusTranscripts(&(loci[index]), index, outfile);
+		exportLocusTranscripts(&(loci[index]), index, outfile, minTransLength);
 	fclose(outfile);
 }
 
@@ -1268,7 +1265,7 @@ static void addForkedTranscriptsToLocus(Locus * locus)
 		add3primeForkedTranscriptsToLocus(locus);
 }
 
-static void addPlausibleTranscriptToLocus(Locus * locus, int configuration)
+static void addTranscriptToLocus(Locus * locus, int configuration, double * scores)
 {
 	if (configuration == LINEAR)
 		addLinearTranscriptToLocus(locus);
@@ -1276,15 +1273,17 @@ static void addPlausibleTranscriptToLocus(Locus * locus, int configuration)
 		addBubbleTranscriptsToLocus(locus);
 	else if (configuration == FORK)
 		addForkedTranscriptsToLocus(locus);
-	else if (configuration == UNKNOWN);
+	else if (configuration == UNKNOWN)
+		computeHighlyExpressedLocusTranscripts(locus,
+						       scores);
 }
 
-void computePlausibleTranscripts(Locus * loci, IDnum locusCount)
-{
+void computeTranscripts(Locus * loci, IDnum locusCount) {
 	IDnum index;
 	Locus *locus;
 	IDnum distribution[4];
 	int configuration;
+	double *scores = callocOrExit(2 * nodeCount(graph), double);
 
 	resetNodeStatus(graph);
 
@@ -1293,9 +1292,11 @@ void computePlausibleTranscripts(Locus * loci, IDnum locusCount)
 		setLocusStatus(locus, true);
 		getDegreeDistribution(locus, distribution);
 		configuration = hasPlausibleTranscripts(distribution);
-		addPlausibleTranscriptToLocus(locus, configuration);
+		addTranscriptToLocus(locus, configuration, scores);
 		setLocusStatus(locus, false);
 	}
+	
+	free(scores);
 }
 
 static void removeIndirectConnectionsAtIndex(IDnum index)
@@ -1672,7 +1673,7 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 }
 
 static void exportLocusContigs(IDnum locusID, Locus * locus,
-			       FILE * outfile)
+			       FILE * outfile, Coordinate minTransLength)
 {
 	IDnum index = 0;
 	Transcript *transcript;
@@ -1680,11 +1681,12 @@ static void exportLocusContigs(IDnum locusID, Locus * locus,
 	exportLocusNodes(locusID, locus, outfile);
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		exportTranscriptContigs(transcript, locusID, index++,
-					outfile);
+		if (getTranscriptLength(transcript) > minTransLength)
+			exportTranscriptContigs(transcript, locusID, index++,
+						outfile);
 }
 
-void exportContigOrders(Locus * loci, IDnum locusCount, char *filename)
+void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength)
 {
 	FILE *outfile = fopen(filename, "w");
 	IDnum index;
@@ -1696,7 +1698,7 @@ void exportContigOrders(Locus * loci, IDnum locusCount, char *filename)
 			   filename);
 
 	for (index = 0; index < locusCount; index++)
-		exportLocusContigs(index, &(loci[index]), outfile);
+		exportLocusContigs(index, &(loci[index]), outfile, minTransLength);
 
 	fclose(outfile);
 
@@ -1987,4 +1989,103 @@ void clipTipsHard(Graph * graph)
 
 	concatenateGraph(graph);
 	printf("%d nodes left\n", nodeCount(graph));
+}
+
+static void markUsedReads(Node * node, boolean * used)
+{
+	IDnum readID;
+	ShortReadMarker * shortReadArray, * shortReadMarker;
+	IDnum shortReadCount, shortReadIndex;
+	PassageMarker * marker;
+
+	if (node == NULL || getNodeStatus(node))
+		return;
+	else
+		setNodeStatus(node, true);
+	
+	// Long reads
+	for(marker = getMarker(node); marker != NULL; marker = getNextInNode(marker)) {
+		readID = getPassageMarkerSequenceID(marker);
+		if (readID < 0)
+			readID = -readID;
+		used[readID] = true;	
+	}	
+
+	// Short reads		
+	if (!readStartsAreActivated(graph))
+		return;
+
+	shortReadArray = getNodeReads(node, graph);
+	shortReadCount = getNodeReadCount(node, graph);
+	for (shortReadIndex = 0; shortReadIndex < shortReadCount; shortReadIndex++) {
+		shortReadMarker = getShortReadMarkerAtIndex(shortReadArray, shortReadIndex);
+		readID = getShortReadMarkerID(shortReadMarker);
+		used[readID] = true;	
+	}
+	
+	shortReadArray = getNodeReads(getTwinNode(node), graph);
+	shortReadCount = getNodeReadCount(getTwinNode(node), graph);
+	for (shortReadIndex = 0; shortReadIndex < shortReadCount; shortReadIndex++) {
+		shortReadMarker = getShortReadMarkerAtIndex(shortReadArray, shortReadIndex);
+		readID = getShortReadMarkerID(shortReadMarker);
+		used[readID] = true;	
+	}
+
+}
+
+void exportUnusedReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory) {
+	char *outFilename =
+	    mallocOrExit(strlen(directory) + 100, char);
+	FILE * outfile;
+	boolean * used = callocOrExit(sequenceCount(graph) + 1, boolean);
+	IDnum nodeID, readID;
+	IDnum locusIndex;
+	Transcript * transcript;
+
+	strcpy(outFilename, directory);
+	strcat(outFilename, "/UnusedReads.fa");
+	outfile = fopen(outFilename, "w");
+
+	printf("Printing unused reads into %s\n", outFilename);
+
+	resetNodeStatus(graph);
+
+	for (locusIndex = 0; locusIndex < locusCount; locusIndex++)
+		for (transcript = loci[locusIndex].transcript; transcript; transcript = transcript->next)
+			if (getTranscriptLength(transcript) > minTransLength)
+				for(nodeID = 0; nodeID < transcript->contigCount; nodeID++)
+					markUsedReads(transcript->contigs[nodeID], used);
+
+	for (readID = 1; readID <= sequenceCount(graph); readID++) 
+		if (!used[readID])
+			exportTightString(outfile, reads->tSequences[readID - 1], readID);	
+
+	free(outFilename);
+	free(used);	
+	fclose(outfile);
+}
+
+IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount) 
+{
+	boolean * used = callocOrExit(sequenceCount(graph) + 1, boolean);
+	IDnum nodeID, readID;
+	IDnum locusIndex;
+	Transcript * transcript;
+	IDnum res = 0;
+
+	resetNodeStatus(graph);
+
+	for (locusIndex = 0; locusIndex < locusCount; locusIndex++)
+		for (transcript = loci[locusIndex].transcript; transcript; transcript = transcript->next)
+			if (getTranscriptLength(transcript) > minTransLength)
+				for(nodeID = 0; nodeID < transcript->contigCount; nodeID++)
+					markUsedReads(transcript->contigs[nodeID], used);
+
+	for (readID = 1; readID <= sequenceCount(graph); readID++) 
+		if (used[readID])
+			res++;
+
+	free(used);	
+
+	return res;
 }

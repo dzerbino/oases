@@ -27,8 +27,7 @@ void setUnreliableConnectionCutoff_oases(int val);
 Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
 			boolean * dubious, Coordinate * lengths,
 			IDnum * locusCount);
-void computeHighlyExpressedTranscripts(Locus * loci, IDnum locusCount);
-void computePlausibleTranscripts(Locus * loci, IDnum locusCount);
+void computeTranscripts(Locus * loci, IDnum locusCount);
 void computeASEvents(Locus * loci, IDnum locusCount);
 
 void exportTranscripts(Locus * loci, IDnum locusCount, char *filename);
