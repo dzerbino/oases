@@ -30,9 +30,11 @@ Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
 void computeTranscripts(Locus * loci, IDnum locusCount);
 void computeASEvents(Locus * loci, IDnum locusCount);
 
-void exportTranscripts(Locus * loci, IDnum locusCount, char *filename);
+void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength);
 void exportASEvents(Locus * loci, IDnum locusCount, char *filename);
-void exportContigOrders(Locus * loci, IDnum locusCount, char *filename);
+void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength);
+void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory);
+IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount);
 
 void removeIndirectConnections();
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount);

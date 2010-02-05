@@ -42,6 +42,7 @@ static void printUsage()
 	puts("\t\t[replace '*' by nothing, '2' or '_long' as necessary]");
 	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default 3)");
 	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default 3)");
+	puts("\t-unused_reads <yes|no>\t\t: export unused reads in UnusedReads.fa file (default: no)");
 	puts("\t--help\t\t\t\t: this help message");
 	puts("");
 	puts("Output:");
@@ -74,6 +75,7 @@ int main(int argc, char **argv)
 	double coverageCutoff = 3;
 	boolean *dubious = NULL;
 	Coordinate minTransLength = -1;
+	boolean unusedReads = false;
 
 	setProgramName("oases");
 
@@ -122,6 +124,9 @@ int main(int argc, char **argv)
 		} else if (strcmp(arg, "-min_trans_lgth") == 0) {
 			sscanf(argv[arg_index], "%lli", &longlong_var);
 			minTransLength = (Coordinate) longlong_var;
+		} else if (strcmp(arg, "-unused_reads") == 0) {
+			unusedReads =
+			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-min_pair_count") == 0) {
 			sscanf(argv[arg_index], "%i", &arg_int);
 			setUnreliableConnectionCutoff_oases(arg_int);
@@ -256,6 +261,9 @@ int main(int argc, char **argv)
 	strcpy(eventFilename, directory);
 	strcat(eventFilename, "/splicing_events.txt");
 	exportASEvents(loci, locusCount, eventFilename);
+
+	if (unusedReads)
+		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
 
 	cleanLocusMemory(loci, locusCount);
 	destroyGraph(graph);

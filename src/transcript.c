@@ -30,6 +30,7 @@
 #include "transcript.h"
 #include "scaffold.h"
 #include "concatenatedGraph.h"
+#include "tightString.h"
 
 #define ADENINE 0
 #define CYTOSINE 1
@@ -2033,7 +2034,7 @@ static void markUsedReads(Node * node, boolean * used)
 
 }
 
-void exportUnusedReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory) {
+void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory) {
 	char *outFilename =
 	    mallocOrExit(strlen(directory) + 100, char);
 	FILE * outfile;
