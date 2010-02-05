@@ -1,0 +1,13 @@
+V.0.1.1
+- Original release
+
+V.0.1.2
+- Added the updateOases script
+- Coded in default parameters
+- Amended Makefile
+- Small error in gap distances
+- Added test dataset
+- Now outputs unused reads
+- Counts reads used in assembly
+- Minimum transcript length can be imposed
+- Merged plausible and highly expressed transcripts
