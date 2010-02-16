@@ -7,7 +7,7 @@ MAXKMERLENGTH=31
 CATEGORIES=2
 DEF = -D MAXKMERLENGTH=$(MAXKMERLENGTH) -D CATEGORIES=$(CATEGORIES)
 
-VELVET_DIR=
+VELVET_DIR=../../velvet
 VELVET_SRC_DIR=$(VELVET_DIR)/src
 VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph 
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
@@ -27,35 +27,36 @@ Z_LIB_FILES=$(Z_LIB_DIR)/*.o
 OBJ = obj/oases.o obj/transcript.o obj/scaffold.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
-default : cleanobj obj velvet oases
+default : oases doc
 
 velvet :
-	cd $(VELVET_DIR) && make
+	cd $(VELVET_DIR) && make obj
 
 velvetdbg :
-	cd $(VELVET_DIR) && make debug
+	cd $(VELVET_DIR) && make obj/dbg
 
 clean :
 	-rm obj/*.o obj/dbg/*.o ./oases 
-	-rm -R obj/
+	cd $(VELVET_DIR) && make clean
+	-rm -f doc/manual_oases_src/algorithms.toc doc/manual_oases_src/algorithms.aux doc/manual_oases_src/algorithms.out doc/manual_oases_src/algorithms.log
 
 cleanobj: 
 	-rm obj/*.o obj/dbg/*.o 
 
-oases : cleanobj obj $(OBJ) 
-	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) ${Z_LIB_FILES}
+oases : cleanobj velvet obj $(OBJ) 
+	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES)
 
 
 debug : cleanobj velvetdbg obj/dbg $(OBJDBG)
-	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES) ${Z_LIB_FILES}
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES)
 
 color : override DEF := $(DEF) -D COLOR
 color : cleanobj obj $(OBJ)
-	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases_de $(OBJ) $(VELVET_FILES)
+	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases_de $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES)
 
 colordebug : override DEF := $(DEF) -D COLOR
 colordebug : cleanobj velvetdbg obj/dbg $(OBJDBG) 
-	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases_de $(OBJDBG) $(VELVET_DBG_FILES)
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases_de $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES)
 
 obj:
 	mkdir -p obj
@@ -68,3 +69,8 @@ obj/%.o: src/%.c
 
 obj/dbg/%.o: src/%.c
 	$(CC) $(CFLAGS) $(DEBUG) $(DEF) -c $? -o $@ -I$(VELVET_SRC_DIR)
+
+doc: algorithms.pdf
+
+algorithms.pdf: doc/manual_oases_src/algorithms.tex
+	cd doc/manual_oases_src; pdflatex algorithms.tex; pdflatex algorithms.tex; mv algorithms.pdf ../..	

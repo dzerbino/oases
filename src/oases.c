@@ -25,7 +25,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 2;
+static int OASES_UPDATE_NUMBER = 3;
 
 static void printUsage()
 {
@@ -46,11 +46,9 @@ static void printUsage()
 	puts("\t--help\t\t\t\t: this help message");
 	puts("");
 	puts("Output:");
-	puts("\tdirectory/highly_expressed_transcripts.fa");
-	puts("\tdirectory/plausible_transcripts.fa");
+	puts("\tdirectory/transcripts.fa");
 	puts("\tdirectory/splicing_events.txt");
-	puts("\tdirectory/contig-ordering-highly-expressed.txt");
-	puts("\tdirectory/contig-ordering-plausible.txt");
+	puts("\tdirectory/contig-ordering.txt");
 }
 
 int main(int argc, char **argv)
@@ -74,7 +72,7 @@ int main(int argc, char **argv)
 	Coordinate *lengths;
 	double coverageCutoff = 3;
 	boolean *dubious = NULL;
-	Coordinate minTransLength = -1;
+	Coordinate minTransLength = 0;
 	boolean unusedReads = false;
 
 	setProgramName("oases");
@@ -262,8 +260,13 @@ int main(int argc, char **argv)
 	strcat(eventFilename, "/splicing_events.txt");
 	exportASEvents(loci, locusCount, eventFilename);
 
-	if (unusedReads)
+	if (unusedReads) {
+		destroyReadSet(reads);
+		reads =
+		    importReadSet(seqFilename);
+		convertSequences(reads);
 		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
+	}
 
 	cleanLocusMemory(loci, locusCount);
 	destroyGraph(graph);

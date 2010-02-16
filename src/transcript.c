@@ -931,8 +931,12 @@ static void exportGapSequence(Coordinate length, FILE * outfile,
 			      int *column)
 {
 	IDnum index;
+	Coordinate displayedLength = length;
+	
+	if (displayedLength < 10)
+		displayedLength = 10;
 
-	for (index = 0; index < length; index++) {
+	for (index = 0; index < displayedLength; index++) {
 		fprintf(outfile, "N");
 
 		if ((*column)++ == 60) {

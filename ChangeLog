@@ -1,7 +1,7 @@
-V.0.1.1
+V 0.1.1
 - Original release
 
-V.0.1.2
+V 0.1.2
 - Added the updateOases script
 - Coded in default parameters
 - Amended Makefile
@@ -11,3 +11,9 @@ V.0.1.2
 - Counts reads used in assembly
 - Minimum transcript length can be imposed
 - Merged plausible and highly expressed transcripts
+
+V 0.1.3
+- Modified Makefile to eliminate side effect on Velvet installation
+- Minimum gap length in fasta file is set at 10 bp
+- Corrected crashing bug when printing UnusedReads file 
+- Eliminated empty transcripts
