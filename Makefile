@@ -27,7 +27,7 @@ Z_LIB_FILES=$(Z_LIB_DIR)/*.o
 OBJ = obj/oases.o obj/transcript.o obj/scaffold.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
-default : oases doc
+default : oases
 
 velvet :
 	cd $(VELVET_DIR) && make obj
@@ -38,7 +38,6 @@ velvetdbg :
 clean :
 	-rm obj/*.o obj/dbg/*.o ./oases 
 	cd $(VELVET_DIR) && make clean
-	-rm -f doc/manual_oases_src/algorithms.toc doc/manual_oases_src/algorithms.aux doc/manual_oases_src/algorithms.out doc/manual_oases_src/algorithms.log
 
 cleanobj: 
 	-rm obj/*.o obj/dbg/*.o 
@@ -69,8 +68,3 @@ obj/%.o: src/%.c
 
 obj/dbg/%.o: src/%.c
 	$(CC) $(CFLAGS) $(DEBUG) $(DEF) -c $? -o $@ -I$(VELVET_SRC_DIR)
-
-doc: algorithms.pdf
-
-algorithms.pdf: doc/manual_oases_src/algorithms.tex
-	cd doc/manual_oases_src; pdflatex algorithms.tex; pdflatex algorithms.tex; mv algorithms.pdf ../..	

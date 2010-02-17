@@ -933,6 +933,9 @@ static void exportGapSequence(Coordinate length, FILE * outfile,
 	IDnum index;
 	Coordinate displayedLength = length;
 	
+	if (length < 0)
+		return;
+
 	if (displayedLength < 10)
 		displayedLength = 10;
 
@@ -1668,8 +1671,11 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 			(long) getNodeID(transcript->contigs[index]),
 			(long long) totalLength);
 		if (index < transcript->contigCount - 1) {
-			fprintf(outfile, "-(%li)->",
-				(long) transcript->distances[index]);
+			if (transcript->distances[index] > 0 && transcript->distances[index] < 10)
+				fprintf(outfile, "-(10)->");
+			else
+				fprintf(outfile, "-(%li)->",
+					(long) transcript->distances[index]);
 			totalLength += transcript->distances[index];
 		}
 	}
