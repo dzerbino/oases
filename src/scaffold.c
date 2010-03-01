@@ -1232,6 +1232,9 @@ void transitiveReductionAtNode(Node * node)
 				}
 			}
 		}
+
+		if (connectionCount <= 1)
+			break;
 	}
 
 	for (c = getConnection(node); c; c = c2) {

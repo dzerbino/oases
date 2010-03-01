@@ -35,6 +35,12 @@ velvet :
 velvetdbg :
 	cd $(VELVET_DIR) && make obj/dbg
 
+velvet_de :
+	cd $(VELVET_DIR) && make obj_de
+
+velvetdbg_de :
+	cd $(VELVET_DIR) && make obj/dbg_de
+
 clean :
 	-rm obj/*.o obj/dbg/*.o ./oases 
 	cd $(VELVET_DIR) && make clean
@@ -50,11 +56,11 @@ debug : cleanobj velvetdbg obj/dbg $(OBJDBG)
 	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES)
 
 color : override DEF := $(DEF) -D COLOR
-color : cleanobj obj $(OBJ)
+color : cleanobj velvet_de obj $(OBJ)
 	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases_de $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES)
 
 colordebug : override DEF := $(DEF) -D COLOR
-colordebug : cleanobj velvetdbg obj/dbg $(OBJDBG) 
+colordebug : cleanobj velvetdbg_de obj/dbg $(OBJDBG) 
 	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases_de $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES)
 
 obj:

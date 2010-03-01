@@ -315,6 +315,7 @@ static Coordinate isContigInverted(Node * node)
 	Coordinate minScorePlus;
 	Coordinate minScoreMinus;
 
+#ifndef COLOR
 	if (getNodeLength(node) < 3)
 		return 0;
 
@@ -344,6 +345,36 @@ static Coordinate isContigInverted(Node * node)
 		if (n3 == THYMINE && n2 == GUANINE && n1 == ADENINE)
 			totalStops[3 + index % 3]++;
 	}
+#else 
+	if (getNodeLength(node) < 2)
+		return 0;
+
+	// Initialise:
+	for (index = 0; index < 6; index++)
+		totalStops[index] = 0;
+	n2 = getNucleotideInNode(node, 0);
+
+	// Scna sequence and spot Stop codons
+	for (index = 1; index < nodeLength; index++) {
+		n1 = n2;
+		n2 = getNucleotideInNode(node, index);
+
+		if (n1 == THYMINE 
+		    && (n2 == ADENINE || n2 == GUANINE))
+			totalStops[index % 3]++;
+
+		if (n1 == CYTOSINE && n2 == GUANINE)
+			totalStops[index % 3]++;
+
+		if (n2 == THYMINE 
+		    && (n1 == ADENINE || n1 == GUANINE))
+			totalStops[3 + index % 3]++;
+
+		if (n1 == GUANINE && n2 == CYTOSINE)
+			totalStops[3 + index % 3]++;
+	}
+
+#endif
 
 	// Find the strand/frame with the minimum number of STOP codons (presumably ORF)
 	minScorePlus = totalStops[0];
@@ -2000,6 +2031,458 @@ void clipTipsHard(Graph * graph)
 
 	concatenateGraph(graph);
 	printf("%d nodes left\n", nodeCount(graph));
+}
+
+static void exportAMOSLib(FILE * outfile, Graph * graph, Category cat)
+{
+	Coordinate distance = getInsertLength(graph, cat * 2);
+	double variance = getInsertLength_var(graph, cat * 2);
+
+	if (distance == -1)
+		return;
+
+	fprintf(outfile, "{LIB\n");
+	fprintf(outfile, "iid:%d\n", (int) (cat + 1));
+	fprintf(outfile, "{DST\n");
+	fprintf(outfile, "mea:%lld\n", (long long) distance);
+	fprintf(outfile, "std:%lld\n", (long long) sqrt(variance));
+	fprintf(outfile, "}\n");
+	fprintf(outfile, "}\n");
+}
+
+static void exportAMOSMarker(FILE * outfile, PassageMarker * marker,
+			     Coordinate nodeLength, Coordinate offset,
+			     int wordShift, boolean firstUniqueMet)
+{
+	Coordinate sequenceStart, sequenceFinish;
+
+	sequenceStart = getPassageMarkerStart(marker);
+	sequenceFinish = getPassageMarkerFinish(marker);
+
+	if (firstUniqueMet == -1) {
+		if (getPassageMarkerSequenceID(marker) < 0) {
+			sequenceFinish += wordShift;
+			sequenceStart += wordShift;
+		}
+	} else if (firstUniqueMet == 0) {
+		if (getPassageMarkerSequenceID(marker) > 0) 
+			sequenceFinish += wordShift;
+		else 
+			sequenceStart += wordShift;
+	} else if (firstUniqueMet == 1) {
+		if (getPassageMarkerSequenceID(marker) > 0) {
+			sequenceFinish += wordShift;
+			sequenceStart += wordShift;
+		}
+	}
+
+	fprintf(outfile, "{TLE\n");
+	fprintf(outfile, "src:%d\n", getAbsolutePassMarkerSeqID(marker));
+	fprintf(outfile, "off:%lld\n", (long long) offset + getStartOffset(marker));
+	fprintf(outfile, "clr:%lld,%lld\n", (long long) sequenceStart, (long long) sequenceFinish);
+	fprintf(outfile, "}\n");
+}
+
+static void exportAMOSShortMarker(FILE * outfile, ShortReadMarker * marker,
+				  ReadSet * reads, Coordinate offset, boolean firstUniqueMet, int wordShift)
+{
+	Coordinate read_offset =
+	    getShortReadMarkerPosition(marker) -
+	    getShortReadMarkerOffset(marker)
+	    + offset;
+	TightString *sequence =
+	    reads->tSequences[getShortReadMarkerID(marker) - 1];
+
+	if (firstUniqueMet == 1)
+		read_offset -= wordShift;
+
+	if (getShortReadMarkerPosition(marker) == -1)
+		return;
+
+	fprintf(outfile, "{TLE\n");
+	fprintf(outfile, "src:%d\n", getShortReadMarkerID(marker));
+	fprintf(outfile, "off:%lld\n", (long long) read_offset);
+	fprintf(outfile, "clr:0,%lld\n", (long long) getLength(sequence));
+	fprintf(outfile, "}\n");
+}
+
+static void exportAMOSReverseShortMarker(FILE * outfile,
+					 ShortReadMarker * marker,
+					 Coordinate nodeLength,
+					 int wordShift, ReadSet * reads,
+					 Coordinate offset, boolean firstUniqueMet)
+{
+	TightString *sequence =
+	    reads->tSequences[getShortReadMarkerID(marker) - 1];
+
+	Coordinate read_offset =
+	    nodeLength - getShortReadMarkerPosition(marker) +
+	    getShortReadMarkerOffset(marker) - getLength(sequence) +
+	    wordShift + offset;
+
+	if (firstUniqueMet == 1)
+		read_offset -= wordShift;
+
+	if (getShortReadMarkerPosition(marker) == -1)
+		return;
+
+	fprintf(outfile, "{TLE\n");
+	fprintf(outfile, "src:%d\n", getShortReadMarkerID(marker));
+	fprintf(outfile, "off:%lld\n", (long long) read_offset);
+	fprintf(outfile, "clr:%lld,0\n", (long long) getLength(sequence));
+	fprintf(outfile, "}\n");
+}
+
+
+static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * transcript, 
+			     IDnum startIndex, IDnum finishIndex, Graph * graph, 
+			     IDnum locusID, IDnum transcriptID, IDnum internalIndex, IDnum iid)
+{
+	Coordinate start;
+	PassageMarker *marker;
+	ShortReadMarker *shortMarkerArray, *shortMarker;
+	Coordinate index, maxIndex;
+	int wordShift = getWordLength(graph) - 1;
+	Coordinate offset = 0;
+	IDnum nodeIndex;
+	Node * node;
+	boolean firstUniqueMet = false;
+	Coordinate length = 0;
+	int column = 0;
+	Nucleotide nucleotide;
+
+	fprintf(outfile, "{CTG\n");
+	fprintf(outfile, "iid:%d\n", iid);
+	fprintf(outfile, "eid:%d-%d-%d\n", locusID, transcriptID, internalIndex);
+
+	fprintf(outfile, "seq:\n");
+	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++) {
+		node = transcript->contigs[nodeIndex];
+		
+		// If first unique met, print initial k-mer
+		if (!firstUniqueMet && getNodeLength(node) >= wordShift) {
+			for (start = 0; start < wordShift; start++) {
+				nucleotide = getNucleotideInNode(getTwinNode(node), getNodeLength(node) - start - 1);
+#ifndef COLOR
+				nucleotide = 3 - nucleotide;
+#endif
+				switch (nucleotide) {
+				case ADENINE:
+					fprintf(outfile, "A");
+					break;	
+				case CYTOSINE:
+					fprintf(outfile, "C");
+					break;	
+				case GUANINE:
+					fprintf(outfile, "G");
+					break;	
+				case THYMINE:
+					fprintf(outfile, "T");
+					break;	
+				default:
+					abort();
+				}
+
+				if (column++ == 60) {
+					fprintf(outfile, "\n");
+					column = 0;
+				}
+			}
+			
+			length += wordShift;
+			firstUniqueMet = true;
+		}
+
+		// Print proper sequence
+		if (!firstUniqueMet) {
+			for (start = 0; start < getNodeLength(node); start++) {
+				nucleotide = getNucleotideInNode(getTwinNode(node), getNodeLength(node) - start - 1);
+#ifndef COLOR
+				nucleotide = 3 - nucleotide;
+#endif
+				switch (nucleotide) {
+				case ADENINE:
+					fprintf(outfile, "A");
+					break;	
+				case CYTOSINE:
+					fprintf(outfile, "C");
+					break;	
+				case GUANINE:
+					fprintf(outfile, "G");
+					break;	
+				case THYMINE:
+					fprintf(outfile, "T");
+					break;	
+				}
+
+				if (column++ == 60) {
+					fprintf(outfile, "\n");
+					column = 0;
+				}
+			}
+		} else {
+			for (start = 0; start < getNodeLength(node); start++) {
+				nucleotide = getNucleotideInNode(node, start);
+
+				switch (nucleotide) {
+				case ADENINE:
+					fprintf(outfile, "A");
+					break;	
+				case CYTOSINE:
+					fprintf(outfile, "C");
+					break;	
+				case GUANINE:
+					fprintf(outfile, "G");
+					break;	
+				case THYMINE:
+					fprintf(outfile, "T");
+					break;	
+				}
+
+				if (column++ == 60) {
+					fprintf(outfile, "\n");
+					column = 0;
+				}
+			}
+		}
+
+		length += getNodeLength(node);
+	}
+	fprintf(outfile, "\n.\n");
+
+	fprintf(outfile, "qlt:\n");
+	column = 0;
+	for (start = 0; start < length; start++) {
+		fprintf(outfile, "I");
+
+		if (column++ == 60) {
+			fprintf(outfile, "\n");
+			column = 0;
+		}
+	}
+	fprintf(outfile, "\n.\n");
+
+	firstUniqueMet = -1;
+	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++) {
+		node = transcript->contigs[nodeIndex];
+		if (firstUniqueMet == 0)
+			firstUniqueMet = 1;
+		else if (firstUniqueMet == -1 && getNodeLength(node) >= wordShift) 
+			firstUniqueMet = 0;
+
+		for (marker = getMarker(node); marker != NULL;
+		     marker = getNextInNode(marker))
+			exportAMOSMarker(outfile, marker, getNodeLength(node),
+					 offset, wordShift, firstUniqueMet);
+		
+
+		if (readStartsAreActivated(graph)) {
+			shortMarkerArray = getNodeReads(node, graph);
+			maxIndex = getNodeReadCount(node, graph);
+			for (index = 0; index < maxIndex; index++) {
+				shortMarker =
+				    getShortReadMarkerAtIndex(shortMarkerArray,
+							      index);
+				exportAMOSShortMarker(outfile, shortMarker, reads,
+						      offset, firstUniqueMet, wordShift);
+			}
+
+			shortMarkerArray = getNodeReads(getTwinNode(node), graph);
+			maxIndex = getNodeReadCount(getTwinNode(node), graph);
+			for (index = 0; index < maxIndex; index++) {
+				shortMarker =
+				    getShortReadMarkerAtIndex(shortMarkerArray,
+							      index);
+				exportAMOSReverseShortMarker(outfile, shortMarker,
+							     getNodeLength(node),
+							     wordShift, reads,
+							     offset, firstUniqueMet);
+			}
+		}
+
+		offset += getNodeLength(node);
+	}
+
+	fprintf(outfile, "}\n");
+}
+
+static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * transcript, IDnum locusID, IDnum transcriptID, Graph * graph) 
+{
+	IDnum smallIndex = 0;
+	static IDnum iid = 1;
+	IDnum contigIndex = iid;
+	int wordShift = getWordLength(graph) - 1;
+	IDnum nodeIndex;
+	boolean uniqueBunch = false;
+	IDnum startIndex = 0;
+	Coordinate start;
+	Coordinate contigLength;
+	Node * node;
+
+	contigLength = 0;
+	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++) {
+		node = transcript->contigs[nodeIndex];
+		contigLength += getNodeLength(node);
+		if (getNodeLength(node) >= wordShift)
+			uniqueBunch = true;
+
+		if (nodeIndex == transcript->contigCount - 1 || transcript->distances[nodeIndex] > 0) {
+			if (contigLength > 0) {
+				exportAMOSContig(outfile, reads, transcript, startIndex, nodeIndex, graph, 
+							 locusID, transcriptID, smallIndex++, iid++);
+				startIndex = nodeIndex + 1;
+			}
+			uniqueBunch = false;
+			contigLength = 0;
+		} 
+	}
+
+	fprintf(outfile, "{SCF\n");
+	fprintf(outfile, "eid:%d-%d\n", locusID, transcriptID);
+
+	uniqueBunch = false;
+	start = 0;
+	contigLength = 0;
+	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++) {
+		node = transcript->contigs[nodeIndex];
+		contigLength += getNodeLength(node);
+		if (getNodeLength(node) >= wordShift)
+			uniqueBunch = true;
+
+		if (nodeIndex == transcript->contigCount - 1 || transcript->distances[nodeIndex] > 0) {
+			if (contigLength > 0) {
+				if (uniqueBunch)
+					contigLength += wordShift;
+
+				fprintf(outfile, "{TLE\n");
+				fprintf(outfile, "off:%lld\n", (long long) start);
+				fprintf(outfile, "clr:0,%lld\n", (long long) contigLength);
+				fprintf(outfile, "src:%d\n", contigIndex++);
+				fprintf(outfile, "}\n");
+			}
+			start += contigLength;
+			start += transcript->distances[nodeIndex];
+			uniqueBunch = false;
+			contigLength = 0;
+		} 
+	}
+
+	fprintf(outfile, "}\n");
+}
+
+static void exportAMOSLocus(FILE * outfile, ReadSet * reads, Locus * locus, IDnum locusID, Coordinate minTransLength,
+			   Graph * graph)
+{
+	Transcript * transcript;
+	IDnum transcriptID = 0;
+
+	for (transcript = locus->transcript; transcript; transcript = transcript->next) 
+		if (getTranscriptLength(transcript) > minTransLength)
+			exportAMOSTranscript(outfile, reads, transcript, locusID, transcriptID++, graph);
+}
+
+static void exportAMOSRead(FILE * outfile, TightString * tString,
+			   IDnum index, IDnum frg_index)
+{
+	Coordinate start, finish;
+	char str[100];
+
+	fprintf(outfile, "{RED\n");
+	fprintf(outfile, "iid:%d\n", index);
+	fprintf(outfile, "eid:%d\n", index);
+	if (frg_index > 0)
+		fprintf(outfile, "frg:%d\n", frg_index);
+
+	fprintf(outfile, "seq:\n");
+	start = 0;
+	while (start <= getLength(tString)) {
+		finish = start + 60;
+		readTightStringFragment(tString, start, finish, str);
+		fprintf(outfile, "%s\n", str);
+		start = finish;
+	}
+	fprintf(outfile, ".\n");
+
+	fprintf(outfile, "qlt:\n");
+	start = 0;
+	while (start <= getLength(tString)) {
+		finish = start + 60;
+		readTightStringFragment(tString, start, finish, str);
+		fprintf(outfile, "%s\n", str);
+		start = finish;
+	}
+	fprintf(outfile, ".\n");
+
+	fprintf(outfile, "}\n");
+}
+
+void exportAMOSTranscripts(Graph * graph,
+		       Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char * directory)
+{
+	IDnum index;
+	Category cat;
+	Locus * locus;
+	FILE *outfile;
+	char filename[10000];
+
+	strcpy(filename, directory);
+	strcat(filename, "/oases_asm.afg");
+	printf("Writing into AMOS file %s...\n", filename);
+	outfile = fopen(filename, "w");
+
+	if (outfile == NULL)
+		exitErrorf(EXIT_FAILURE, true, "Could not write to AMOS file %s",
+		       filename);
+
+	for (cat = 0; cat <= CATEGORIES; cat++)
+		exportAMOSLib(outfile, graph, cat);
+
+	for (index = 1; index <= reads->readCount; index++) {
+		if (reads->categories[index - 1] % 2 != 0 &&
+		    getInsertLength(graph,
+				    reads->categories[index - 1]) >= 0) {
+			fprintf(outfile, "{FRG\n");
+			fprintf(outfile, "lib:%d\n",
+				(int) ((reads->categories[index - 1] / 2) + 1));
+			fprintf(outfile, "rds:%d,%d\n", index,
+				index + 1);
+			fprintf(outfile, "eid:%d\n", index);
+			fprintf(outfile, "iid:%d\n", index);
+			fprintf(outfile, "typ:I\n");
+			fprintf(outfile, "}\n");
+			index++;
+		}
+	}
+
+	for (index = 1; index <= reads->readCount; index++) {
+		if (reads->categories[index - 1] % 2 != 0 &&
+		    getInsertLength(graph,
+				    reads->categories[index - 1]) >= 0) {
+			exportAMOSRead(outfile,
+				       reads->tSequences[index - 1], index,
+				       index);
+			index++;
+			exportAMOSRead(outfile,
+				       reads->tSequences[index - 1], index,
+				       index - 1);
+		} else {
+			exportAMOSRead(outfile,
+				       reads->tSequences[index - 1], index,
+				       -1);
+		}
+	}
+
+	for (index = 0; index < locusCount; index++) {
+		locus = &(loci[index]);
+
+		if (locus == NULL)
+			continue;
+
+		exportAMOSLocus(outfile, reads, locus, index, minTransLength, graph);
+	}
+
+	fclose(outfile);
+
 }
 
 static void markUsedReads(Node * node, boolean * used)

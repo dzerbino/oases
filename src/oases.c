@@ -25,7 +25,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 4;
+static int OASES_UPDATE_NUMBER = 5;
 
 static void printUsage()
 {
@@ -43,6 +43,7 @@ static void printUsage()
 	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default 3)");
 	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default 3)");
 	puts("\t-unused_reads <yes|no>\t\t: export unused reads in UnusedReads.fa file (default: no)");
+	puts("\t-amos_file <yes|no>\t\t: export assembly to AMOS file (default: no export)");
 	puts("\t--help\t\t\t\t: this help message");
 	puts("");
 	puts("Output:");
@@ -74,6 +75,7 @@ int main(int argc, char **argv)
 	boolean *dubious = NULL;
 	Coordinate minTransLength = 0;
 	boolean unusedReads = false;
+	boolean exportAssembly = false;
 
 	setProgramName("oases");
 
@@ -122,6 +124,9 @@ int main(int argc, char **argv)
 		} else if (strcmp(arg, "-min_trans_lgth") == 0) {
 			sscanf(argv[arg_index], "%lli", &longlong_var);
 			minTransLength = (Coordinate) longlong_var;
+		} else if (strcmp(arg, "-amos_file") == 0) {
+			exportAssembly =
+			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-unused_reads") == 0) {
 			unusedReads =
 			    (strcmp(argv[arg_index], "yes") == 0);
@@ -251,22 +256,30 @@ int main(int argc, char **argv)
 	       "/contig-ordering.txt");
 	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength);
 	printf("Finished heuristic approach, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
-	cleanTranscriptMemory(loci, locusCount);
 
-	removeIndirectConnections();
-
-	computeASEvents(loci, locusCount);
-	strcpy(eventFilename, directory);
-	strcat(eventFilename, "/splicing_events.txt");
-	exportASEvents(loci, locusCount, eventFilename);
-
-	if (unusedReads) {
+	if (unusedReads || exportAssembly) {
 		destroyReadSet(reads);
 		reads =
 		    importReadSet(seqFilename);
 		convertSequences(reads);
-		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
 	}
+
+	if (unusedReads) 
+		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
+
+	if (exportAssembly) 
+		exportAMOSTranscripts(graph, loci, locusCount, reads, minTransLength, directory);
+
+	cleanTranscriptMemory(loci, locusCount);
+
+	removeIndirectConnections();
+
+#ifndef COLOR
+	computeASEvents(loci, locusCount);
+	strcpy(eventFilename, directory);
+	strcat(eventFilename, "/splicing_events.txt");
+	exportASEvents(loci, locusCount, eventFilename);
+#endif
 
 	cleanLocusMemory(loci, locusCount);
 	destroyGraph(graph);

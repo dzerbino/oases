@@ -35,6 +35,7 @@ void exportASEvents(Locus * loci, IDnum locusCount, char *filename);
 void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength);
 void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory);
 IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount);
+void exportAMOSTranscripts(Graph * graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char * directory);
 
 void removeIndirectConnections();
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount);
