@@ -32,3 +32,9 @@ V 0.1.6
 - Changed numbering of loci and transcripts in output to 1-based indexing
 - Bug in setting min_pair_count
 - Added the paired_cutoff parameter
+
+V 0.1.7
+- Correction to manual
+- Corrected bug which added lots of gaps
+- Added -scaffolding option
+

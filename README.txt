@@ -41,7 +41,7 @@ You must first process the reads using Velvet:
 As an example:
 
 > velveth new_directory 21 -shortPaired data/test_reads.fa
-> velvetg new_directory -reads_trkg yes
+> velvetg new_directory -read_trkg yes
 
 You can now run Oases on the Velvet working directory which has just been created.
 Provide all the information about insert lengths and their standard deviation as 
@@ -92,6 +92,8 @@ E/ OPTIONS
 
 The behavior of Oases can be modified using the following options:
 
+-min_trans_length
+	simple threshold on output transcript length
 -cov_cutoff 
 	minimum number of times a k-mer has to be observed to be used in the 
 	assembly (just like in Velvet) [default=3]
@@ -101,6 +103,8 @@ The behavior of Oases can be modified using the following options:
 -paired_cutoff 
 	minimum ratio between the numbers of observed and expected connecting
 	read pairs between two contigs [default=0.1]
+-scaffolding
+	allows you to prevent the creation of gapped transcripts
 
 E.g.:
 

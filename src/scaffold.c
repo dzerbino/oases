@@ -829,7 +829,7 @@ static void computeLocalNodeToNodeMappingsFromConnections(Connection *
 	IDnum nodeID1 = getNodeID(node1);
 	IDnum nodeID2 = getNodeID(node2);
 	Coordinate distance =
-	    (getNodeLength(node1) + getNodeLength(node2)) / 2;
+	    getNodeLength(node1)/2 + getNodeLength(node2)/2;
 	Arc *arc;
 
 	if (getUniqueness(node1) || getUniqueness(node2))
@@ -952,6 +952,38 @@ static void removeUnreliableConnections(Category * categories)
 		if (counts[cat])
 			free(counts[cat]);
 	free(counts);
+}
+
+static void removeGappedConnections()
+{
+	IDnum maxNodeIndex = nodeCount(graph) * 2 + 1;
+	IDnum index;
+	Connection *connect, *next;
+	Node * node;
+	Coordinate halfNodeLength;
+	Coordinate distance;
+	IDnum nodes = nodeCount(graph);
+
+	for (index = 0; index < maxNodeIndex; index++) {
+		node = getNodeInGraph(graph, index - nodes);
+
+		if (node == NULL)
+			continue;
+
+		halfNodeLength = getNodeLength(node)/2;
+
+		for (connect = scaffold[index]; connect != NULL;
+		     connect = next) {
+			next = connect->next;
+	
+			distance = connect->distance;
+			distance -= halfNodeLength;	
+			distance -= getNodeLength(connect->destination)/2;
+
+			if (distance > 0)
+				destroyConnection(connect, index - nodes);
+		}
+	}
 }
 
 static void defineUniqueness(Node * node)
@@ -1265,7 +1297,7 @@ void transitiveReduction()
 }
 
 void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
-		   Coordinate * lengths)
+		   Coordinate * lengths, boolean scaffolding)
 {
 	IDnum *readPairs = reads->mateReads;
 	Category *cats = reads->categories;
@@ -1285,10 +1317,12 @@ void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
 	computeNodeToNodeMappings(readNodes, readNodeCounts, readPairs,
 				  cats, dubious, lengths, true);
 	computeLocalNodeToNodeMappings();
-	//computeLocalNodeToNodeMappings(readNodes, readNodeCounts, dubious);
-	//fillUpLocalConnections(readNodes, readNodeCounts, lengths,
-	//                     dubious);
+
 	removeUnreliableConnections(cats);
+	
+	if (!scaffolding)
+		removeGappedConnections();
+	
 	sortScaffold();
 
 	// Clean up

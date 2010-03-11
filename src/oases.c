@@ -25,7 +25,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 6;
+static int OASES_UPDATE_NUMBER = 7;
 
 static void printUsage()
 {
@@ -48,6 +48,7 @@ static void printUsage()
 	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default: hash-length)");
 	puts("\t-paired_cutoff <floating-point>\t: minimum ratio allowed between the numbers of observed and estimated connecting read pairs");
 	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.1)");
+	puts("\t-scaffolding <yes|no>\t\t:Allow gaps in transcripts (default: yes)");
 	puts("");
 	puts("Output:");
 	puts("\tdirectory/transcripts.fa");
@@ -80,6 +81,7 @@ int main(int argc, char **argv)
 	double pairedThreshold = 0.1;
 	boolean unusedReads = false;
 	boolean exportAssembly = false;
+	boolean scaffolding = true;
 
 	setProgramName("oases");
 
@@ -136,6 +138,9 @@ int main(int argc, char **argv)
 			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-unused_reads") == 0) {
 			unusedReads =
+			    (strcmp(argv[arg_index], "yes") == 0);
+		} else if (strcmp(arg, "-scaffolding") == 0) {
+			scaffolding =
 			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-min_pair_count") == 0) {
 			sscanf(argv[arg_index], "%i", &arg_int);
@@ -252,7 +257,7 @@ int main(int argc, char **argv)
 		pairUpReads(reads, 2 * CATEGORIES + 1);
 
 	loci =
-	    extractGraphLoci(graph, reads, dubious, lengths, &locusCount);
+	    extractGraphLoci(graph, reads, dubious, lengths, &locusCount, scaffolding);
 
 	computeTranscripts(loci, locusCount);
 	strcpy(transcriptFilename, directory);

@@ -426,13 +426,13 @@ static void orientLoci(Locus * loci, IDnum locusCount)
 
 Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 			boolean * dubious, Coordinate * lengths,
-			IDnum * locusCount)
+			IDnum * locusCount, boolean scaffolding)
 {
 	Locus *loci;
 
 	graph = argGraph;
 
-	buildScaffold(graph, reads, dubious, lengths);
+	buildScaffold(graph, reads, dubious, lengths, scaffolding);
 
 	puts("Extracting loci from connection graph...");
 
@@ -964,7 +964,7 @@ static void exportGapSequence(Coordinate length, FILE * outfile,
 	IDnum index;
 	Coordinate displayedLength = length;
 	
-	if (length < 0)
+	if (length <= 0)
 		return;
 
 	if (displayedLength < 10)
@@ -973,7 +973,7 @@ static void exportGapSequence(Coordinate length, FILE * outfile,
 	for (index = 0; index < displayedLength; index++) {
 		fprintf(outfile, "N");
 
-		if ((*column)++ == 60) {
+		if (++(*column) == 60) {
 			fprintf(outfile, "\n");
 			*column = 0;
 		}
@@ -1707,12 +1707,14 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 			(long) getNodeID(transcript->contigs[index]),
 			(long long) totalLength);
 		if (index < transcript->contigCount - 1) {
-			if (transcript->distances[index] > 0 && transcript->distances[index] < 10)
+			if (transcript->distances[index] > 0 && transcript->distances[index] < 10) {
 				fprintf(outfile, "-(10)->");
-			else
+				totalLength += 10;
+			} else {
 				fprintf(outfile, "-(%li)->",
 					(long) transcript->distances[index]);
-			totalLength += transcript->distances[index];
+				totalLength += transcript->distances[index];
+			}
 		}
 	}
 
