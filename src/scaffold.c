@@ -63,6 +63,7 @@ struct readOccurence_st {
 // Global params
 static Graph *graph = NULL;
 static IDnum UNRELIABLE_CONNECTION_CUTOFF = 4;
+static double pairedThreshold = 0.1;
 
 // Global pointers
 static Connection **scaffold = NULL;
@@ -223,7 +224,7 @@ static boolean testConnection(IDnum IDA, Connection * connect,
 		return false;
 
 	// Remove inconsistent connections
-	return connect->paired_count >= total / 10;
+	return connect->paired_count >= total * pairedThreshold;
 }
 
 static IDnum *computeReadToNodeCounts()
@@ -1296,6 +1297,14 @@ void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
 	for (index = 0; index < sequenceCount(graph) + 1; index++)
 		free(readNodes[index]);
 	free(readNodes);
+}
+
+void scaffold_setPairedThreshold(pairedThreshold_arg) {
+	pairedThreshold = pairedThreshold_arg;
+}
+
+void scaffold_setUnreliableConnectionCutoff(val) {
+	UNRELIABLE_CONNECTION_CUTOFF = (IDnum) val;
 }
 
 void cleanScaffoldMemory()

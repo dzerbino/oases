@@ -26,3 +26,9 @@ V 0.1.5
 - Unused reads now selected properly
 - AFG output available
 - Colorspace now handled explicitly
+
+V 0.1.6
+- Compilation warning avoided
+- Changed numbering of loci and transcripts in output to 1-based indexing
+- Bug in setting min_pair_count
+- Added the paired_cutoff parameter

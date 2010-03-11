@@ -98,6 +98,9 @@ The behavior of Oases can be modified using the following options:
 -min_pair_cov
 	minimum number of times two contigs must be connected by reads or read pairs
 	to be clustered together [default=4]
+-paired_cutoff 
+	minimum ratio between the numbers of observed and expected connecting
+	read pairs between two contigs [default=0.1]
 
 E.g.:
 

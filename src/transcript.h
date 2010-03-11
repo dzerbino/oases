@@ -48,5 +48,7 @@ void clipTipsHard(Graph * graph);
 ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
 			    int wordLength);
 
+void setPairedThreshold(double pairedThreshold);
+
 void exportLocusGraph(FILE * outfile, IDnum index, Locus * loci);
 #endif

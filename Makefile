@@ -42,11 +42,11 @@ velvetdbg_de :
 	cd $(VELVET_DIR) && make obj/dbg_de
 
 clean :
-	-rm obj/*.o obj/dbg/*.o ./oases 
+	rm -f obj/*.o obj/dbg/*.o ./oases 
 	cd $(VELVET_DIR) && make clean
 
 cleanobj: 
-	-rm obj/*.o obj/dbg/*.o 
+	rm -f obj/*.o obj/dbg/*.o 
 
 oases : cleanobj velvet obj $(OBJ) 
 	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES)

@@ -25,7 +25,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 5;
+static int OASES_UPDATE_NUMBER = 6;
 
 static void printUsage()
 {
@@ -35,16 +35,19 @@ static void printUsage()
 	puts("\tdirectory\t\t\t: working directory name");
 	puts("");
 	puts("Standard options:");
-	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 4)");
 	puts("\t-ins_length2 <integer>\t\t: expected distance between two paired-end reads in the second short-read dataset (default: no read pairing)");
 	puts("\t-ins_length_long <integer>\t: expected distance between two long paired-end reads (default: no read pairing)");
 	puts("\t-ins_length*_sd <integer>\t: est. standard deviation of respective dataset (default: 10\% of corresponding length)");
 	puts("\t\t[replace '*' by nothing, '2' or '_long' as necessary]");
-	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default 3)");
-	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default 3)");
 	puts("\t-unused_reads <yes|no>\t\t: export unused reads in UnusedReads.fa file (default: no)");
 	puts("\t-amos_file <yes|no>\t\t: export assembly to AMOS file (default: no export)");
 	puts("\t--help\t\t\t\t: this help message");
+	puts("Advanced options:");
+	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default: 3)");
+	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 4)");
+	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default: hash-length)");
+	puts("\t-paired_cutoff <floating-point>\t: minimum ratio allowed between the numbers of observed and estimated connecting read pairs");
+	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.1)");
 	puts("");
 	puts("Output:");
 	puts("\tdirectory/transcripts.fa");
@@ -74,6 +77,7 @@ int main(int argc, char **argv)
 	double coverageCutoff = 3;
 	boolean *dubious = NULL;
 	Coordinate minTransLength = 0;
+	double pairedThreshold = 0.1;
 	boolean unusedReads = false;
 	boolean exportAssembly = false;
 
@@ -124,6 +128,9 @@ int main(int argc, char **argv)
 		} else if (strcmp(arg, "-min_trans_lgth") == 0) {
 			sscanf(argv[arg_index], "%lli", &longlong_var);
 			minTransLength = (Coordinate) longlong_var;
+		} else if (strcmp(arg, "-paired_cutoff") == 0) {
+			sscanf(argv[arg_index], "%lf", &pairedThreshold);
+			setPairedThreshold(pairedThreshold);
 		} else if (strcmp(arg, "-amos_file") == 0) {
 			exportAssembly =
 			    (strcmp(argv[arg_index], "yes") == 0);

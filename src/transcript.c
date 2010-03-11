@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "globals.h"
 #include "recycleBin.h"
@@ -77,7 +78,6 @@ struct locus_st {
 // Global params
 static Graph *graph = NULL;
 static IDnum maxtrans = 10;
-static IDnum UNRELIABLE_CONNECTION_CUTOFF = 5;
 
 // Global pointers
 static NodeList *markedNodes;
@@ -894,7 +894,7 @@ static void computeHighlyExpressedLocusTranscripts(Locus * locus,
 
 void setUnreliableConnectionCutoff_oases(int val)
 {
-	UNRELIABLE_CONNECTION_CUTOFF = (IDnum) val;
+	scaffold_setUnreliableConnectionCutoff(val);
 }
 
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount)
@@ -981,15 +981,15 @@ static void exportGapSequence(Coordinate length, FILE * outfile,
 }
 
 static void exportTranscript(Transcript * transcript, IDnum locusID,
-			     IDnum transID, FILE * outfile)
+			     IDnum transID, IDnum transcriptCount, FILE * outfile)
 {
 	IDnum index;
 	int column = 0;
 	boolean hideKmer = false;
 
 	// Header
-	fprintf(outfile, ">Locus_%li_Transcript_%li_Confidence_%.3f\n",
-		(long) locusID, (long) transID, transcript->confidence);
+	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f\n",
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence);
 
 	// Sequence
 	for (index = 0; index < transcript->contigCount; index++) {
@@ -1027,11 +1027,16 @@ static void exportLocusTranscripts(Locus * locus, IDnum locusID,
 {
 	IDnum index = 0;
 	Transcript *transcript;
+	IDnum transcriptCount = 0;
+
+	for (transcript = locus->transcript; transcript != NULL;
+	     transcript = transcript->next)
+		transcriptCount++;
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
 		if (getTranscriptLength(transcript) > minTransLength)
-			exportTranscript(transcript, locusID, index++, outfile);
+			exportTranscript(transcript, locusID, index++, transcriptCount, outfile);
 }
 
 void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength)
@@ -1599,7 +1604,7 @@ static void exportNodeSequence(Node * node, FILE * outfile)
 
 static void exportLocusNode(IDnum index, Node * node, FILE * outfile)
 {
-	fprintf(outfile, ">Locus_%li_Node_%li\n", (long) index,
+	fprintf(outfile, ">Locus_%li_Node_%li\n", (long) index + 1,
 		(long) abs_id(getNodeID(node)));
 	exportNodeSequence(node, outfile);
 }
@@ -1629,7 +1634,7 @@ static void exportEvent(IDnum index, Event * event, FILE * outfile)
 	for (i = 0; i < 4; i++)
 		getNodeStringID(id[i], event->nodes[i]);
 
-	fprintf(outfile, "Locus %li: ", (long) index);
+	fprintf(outfile, "Locus %li: ", (long) index + 1);
 
 	if (event->type == mutually_exclusive_exons) {
 		fprintf(outfile,
@@ -1686,14 +1691,14 @@ void exportASEvents(Locus * loci, IDnum locusCount, char *filename)
 }
 
 static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
-				    IDnum transID, FILE * outfile)
+				    IDnum transID, IDnum transcriptCount, FILE * outfile)
 {
 	IDnum index;
 	Coordinate totalLength = getWordLength(graph) - 1;
 
 	// Header
-	fprintf(outfile, ">Locus_%li_Transcript_%li_Confidence_%.3f\n",
-		(long) locusID, (long) transID, transcript->confidence);
+	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f\n",
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence);
 
 	// Sequence
 	for (index = 0; index < transcript->contigCount; index++) {
@@ -1719,12 +1724,17 @@ static void exportLocusContigs(IDnum locusID, Locus * locus,
 {
 	IDnum index = 0;
 	Transcript *transcript;
+	IDnum transcriptCount = 0;
+
+	for (transcript = locus->transcript; transcript != NULL;
+	     transcript = transcript->next)
+		transcriptCount++;
 
 	exportLocusNodes(locusID, locus, outfile);
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
 		if (getTranscriptLength(transcript) > minTransLength)
-			exportTranscriptContigs(transcript, locusID, index++,
+			exportTranscriptContigs(transcript, locusID, index++, transcriptCount,
 						outfile);
 }
 
@@ -2582,4 +2592,8 @@ IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci
 	free(used);	
 
 	return res;
+}
+
+void setPairedThreshold(double pairedThreshold) {
+	scaffold_setPairedThreshold(pairedThreshold);
 }
