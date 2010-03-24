@@ -554,6 +554,9 @@ static void projectFromSingleRead(Node * node,
 	} else {
 		// variance += 0;
 		distance += position - offset - getNodeLength(node) / 2;
+
+		if (getNodeLength(node) % 2)
+			distance--;
 	}
 
 	if (readOccurence->position < 0) {

@@ -930,15 +930,15 @@ void cleanLocusMemory(Locus * loci, IDnum locusCount)
 }
 
 static void exportContigSequence(Node * node, FILE * outfile, int *column,
-				 boolean hideKmer)
+				 boolean showKmer)
 {
 	char *string = expandNodeFragment(node, 0, getNodeLength(node),
 					  getWordLength(graph));
 	Coordinate start = 0;
 	char str[100];
 
-	if (hideKmer && getNodeLength(node) >= getWordLength(graph) - 1)
-		start = getWordLength(graph) - 1;
+	if (getNodeLength(node) >= getWordLength(graph) - 1)
+		start = getWordLength(graph) - 1 - showKmer;
 
 	while (start < strlen(string)) {
 		if (getNodeLength(node) < getWordLength(graph) - 1)
@@ -985,7 +985,7 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 {
 	IDnum index;
 	int column = 0;
-	boolean hideKmer = false;
+	boolean showKmer = getWordLength(graph) - 1;
 
 	// Header
 	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f\n",
@@ -994,14 +994,17 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 	// Sequence
 	for (index = 0; index < transcript->contigCount; index++) {
 		exportContigSequence(transcript->contigs[index], outfile,
-				     &column, hideKmer);
+				     &column, showKmer);
 		if (index < transcript->contigCount - 1) {
-			exportGapSequence(transcript->distances[index],
-					  outfile, &column);
-			if (transcript->distances[index] <= 0)
-				hideKmer = true;
-			else
-				hideKmer = false;
+			if (getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
+				if (transcript->distances[index] > getWordLength(graph) - 1)
+					showKmer = getWordLength(graph) - 1;
+				else
+					showKmer = transcript->distances[index];
+			} else
+				showKmer = 0;
+
+			exportGapSequence(transcript->distances[index] - showKmer, outfile, &column);
 		}
 
 	}
@@ -1707,7 +1710,10 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 			(long) getNodeID(transcript->contigs[index]),
 			(long long) totalLength);
 		if (index < transcript->contigCount - 1) {
-			if (transcript->distances[index] > 0 && transcript->distances[index] < 10) {
+			if (transcript->distances[index] < getWordLength(graph) && getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
+				fprintf(outfile, "-(0)->");
+				totalLength += transcript->distances[index];
+			} else if (transcript->distances[index] > 0 && transcript->distances[index] < 10) {
 				fprintf(outfile, "-(10)->");
 				totalLength += 10;
 			} else {

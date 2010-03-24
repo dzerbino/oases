@@ -36,7 +36,7 @@ You must first process the reads using Velvet:
 * you must choose a hash length at this stage (cf. the Velvet manual),
 * DO NOT set a coverage cutoff, you should set that when running oases, 
 * DO NOT set an expected coverage,
-* remember to turn on the -read_trkg option when running velveth. 
+* remember to turn on the -read_trkg option when running velvetg. 
 
 As an example:
 
@@ -55,13 +55,11 @@ D/ OUTPUT FILES
 Oases produces a number of output files, which correspond to the different algorithms
 being run succesively on the data. In the above example, you would find:
 
-new_directory/highly_expressed_transcripts.fa 
-	A FASTA file containing the highly expressed transcripts imputed by dynamic
-	programming.
-
-new_directory/plausible_transcripts.fa
+new_directory/transcripts.fa
 	A FASTA file containing the transcripts imputed directly from trivial
-	clusters of contigs.
+	clusters of contigs (loci with less than two transcripts and Confidence Values = 1)
+	and the highly expressed transcripts imputed by dynamic
+	programming (loci with more than 2 transcripts and Confidence Values <1).
 
 new_directory/splicing_events.txt
 	A hybrid file which describes the contigs contained in each locus in FASTA

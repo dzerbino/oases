@@ -38,3 +38,6 @@ V 0.1.7
 - Corrected bug which added lots of gaps
 - Added -scaffolding option
 
+V 0.1.8
+- Updated manual
+- Reduced number of N gaps
