@@ -245,16 +245,18 @@ static IDnum *computeReadToNodeCounts()
 		node = getNodeInGraph(graph, nodeIndex - nodeCount(graph));
 		if (node == NULL)
 			continue;
-		nodeArray = getNodeReads(node, graph);
-		nodeReadCount = getNodeReadCount(node, graph);
 
 		// Short reads
-		for (readIndex = 0; readIndex < nodeReadCount; readIndex++) {
-			shortMarker =
-			    getShortReadMarkerAtIndex(nodeArray,
-						      readIndex);
-			readNodeCounts[getShortReadMarkerID
-				       (shortMarker)]++;
+		if (readStartsAreActivated(graph)) {
+			nodeArray = getNodeReads(node, graph);
+			nodeReadCount = getNodeReadCount(node, graph);
+			for (readIndex = 0; readIndex < nodeReadCount; readIndex++) {
+				shortMarker =
+				    getShortReadMarkerAtIndex(nodeArray,
+							      readIndex);
+				readNodeCounts[getShortReadMarkerID
+					       (shortMarker)]++;
+			}
 		}
 
 		// Long reads
@@ -312,21 +314,25 @@ static void computePartialReadToNodeMapping(IDnum nodeID,
 	IDnum index, readIndex;
 	ReadOccurence *readArray, *readOccurence;
 	Node *node = getNodeInGraph(graph, nodeID);
-	ShortReadMarker *nodeArray = getNodeReads(node, graph);
-	IDnum nodeReadCount = getNodeReadCount(node, graph);
+	ShortReadMarker *nodeArray;
+	IDnum nodeReadCount;
 	PassageMarker *marker;
 
-	for (index = 0; index < nodeReadCount; index++) {
-		shortMarker = getShortReadMarkerAtIndex(nodeArray, index);
-		readIndex = getShortReadMarkerID(shortMarker);
-		readArray = readNodes[readIndex];
-		readOccurence = &readArray[readNodeCounts[readIndex]];
-		readOccurence->nodeID = nodeID;
-		readOccurence->position =
-		    getShortReadMarkerPosition(shortMarker);
-		readOccurence->offset =
-		    getShortReadMarkerOffset(shortMarker);
-		readNodeCounts[readIndex]++;
+	if (readStartsAreActivated(graph)) {
+		nodeArray = getNodeReads(node, graph);
+		nodeReadCount = getNodeReadCount(node, graph);
+		for (index = 0; index < nodeReadCount; index++) {
+			shortMarker = getShortReadMarkerAtIndex(nodeArray, index);
+			readIndex = getShortReadMarkerID(shortMarker);
+			readArray = readNodes[readIndex];
+			readOccurence = &readArray[readNodeCounts[readIndex]];
+			readOccurence->nodeID = nodeID;
+			readOccurence->position =
+			    getShortReadMarkerPosition(shortMarker);
+			readOccurence->offset =
+			    getShortReadMarkerOffset(shortMarker);
+			readNodeCounts[readIndex]++;
+		}
 	}
 
 	for (marker = getMarker(node); marker != NULL;
@@ -554,9 +560,6 @@ static void projectFromSingleRead(Node * node,
 	} else {
 		// variance += 0;
 		distance += position - offset - getNodeLength(node) / 2;
-
-		if (getNodeLength(node) % 2)
-			distance--;
 	}
 
 	if (readOccurence->position < 0) {
@@ -571,9 +574,13 @@ static void projectFromSingleRead(Node * node,
 	}
 
 	if (offset < readOccurence->offset) {
+		if (getNodeLength(node) % 2)
+			distance--;
 		createConnection(getNodeID(node), getNodeID(target), 1, 0,
 				 distance, variance);
 	} else {
+		if (getNodeLength(target) % 2)
+			distance++;
 		createConnection(-getNodeID(node), -getNodeID(target), 1,
 				 0, -distance, variance);
 	}
@@ -767,15 +774,17 @@ static void projectFromNode(IDnum nodeID,
 	if (node == NULL || !getUniqueness(node))
 		return;
 
-	nodeArray = getNodeReads(node, graph);
-	nodeReadCount = getNodeReadCount(node, graph);
-	for (index = 0; index < nodeReadCount; index++) {
-		shortMarker = getShortReadMarkerAtIndex(nodeArray, index);
-		if (dubious[getShortReadMarkerID(shortMarker) - 1])
-			continue;
-		projectFromShortRead(node, shortMarker, readPairs, cats,
-				     readNodes, readNodeCounts, lengths,
-				     weight);
+	if (readStartsAreActivated(graph)) {
+		nodeArray = getNodeReads(node, graph);
+		nodeReadCount = getNodeReadCount(node, graph);
+		for (index = 0; index < nodeReadCount; index++) {
+			shortMarker = getShortReadMarkerAtIndex(nodeArray, index);
+			if (dubious[getShortReadMarkerID(shortMarker) - 1])
+				continue;
+			projectFromShortRead(node, shortMarker, readPairs, cats,
+					     readNodes, readNodeCounts, lengths,
+					     weight);
+		}
 	}
 
 	for (marker = getMarker(node); marker != NULL;
@@ -907,24 +916,26 @@ static IDnum **countShortReads(Graph * graph, Category * categories)
 			    callocOrExit(2 * nodeCount(graph) + 1, IDnum);
 
 	// Start fillin'
-	for (nodeIndex = 0; nodeIndex < 2 * nodes + 1; nodeIndex++) {
-		node = getNodeInGraph(graph, nodeIndex - nodes);
+	if (readStartsAreActivated(graph)) {
+		for (nodeIndex = 0; nodeIndex < 2 * nodes + 1; nodeIndex++) {
+			node = getNodeInGraph(graph, nodeIndex - nodes);
 
-		if (node == NULL)
-			continue;
+			if (node == NULL)
+				continue;
 
-		array = getNodeReads(node, graph);
-		readCount = getNodeReadCount(node, graph);
-		for (readIndex = 0; readIndex < readCount; readIndex++) {
-			marker =
-			    getShortReadMarkerAtIndex(array, readIndex);
-			readID = getShortReadMarkerID(marker);
-			if (categories)
-				cat = categories[readID - 1];
-			else
-				cat = 1;
-			if (cat % 2 == 1 && counts[cat / 2] != NULL)
-				counts[cat / 2][nodeIndex]++;
+			array = getNodeReads(node, graph);
+			readCount = getNodeReadCount(node, graph);
+			for (readIndex = 0; readIndex < readCount; readIndex++) {
+				marker =
+				    getShortReadMarkerAtIndex(array, readIndex);
+				readID = getShortReadMarkerID(marker);
+				if (categories)
+					cat = categories[readID - 1];
+				else
+					cat = 1;
+				if (cat % 2 == 1 && counts[cat / 2] != NULL)
+					counts[cat / 2][nodeIndex]++;
+			}
 		}
 	}
 
