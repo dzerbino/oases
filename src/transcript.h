@@ -51,4 +51,6 @@ ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
 void setPairedThreshold(double pairedThreshold);
 
 void exportLocusGraph(FILE * outfile, IDnum index, Locus * loci);
+
+void setDegreeCutoff(int val);
 #endif

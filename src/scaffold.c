@@ -35,7 +35,6 @@
 #define THYMINE 3
 
 #define BLOCK_SIZE  100000
-#define LN2 1.4
 #define LENGTHCUTOFF 50
 
 typedef struct connection_st Connection;
@@ -63,6 +62,7 @@ struct readOccurence_st {
 // Global params
 static Graph *graph = NULL;
 static IDnum UNRELIABLE_CONNECTION_CUTOFF = 4;
+static int DEGREE_CUTOFF = 3;
 static double pairedThreshold = 0.1;
 
 // Global pointers
@@ -210,17 +210,17 @@ static boolean testConnection(IDnum IDA, Connection * connect,
 	    UNRELIABLE_CONNECTION_CUTOFF)
 		return false;
 
-	if (!getUniqueness(connect->destination)
+	if (getNodeLength(connect->destination) <= LENGTHCUTOFF
 	    && connect->direct_count == 0)
 		return false;
-	else if (!getUniqueness(connect->destination))
+	else if (getNodeLength(connect->destination) <= LENGTHCUTOFF)
 		return true;
 
 	for (cat = 0; cat <= CATEGORIES; cat++)
 		total +=
 		    expectedNumberOfConnections(IDA, connect, counts, cat);
 
-	if (total == 0 && connect->direct_count == false)
+	if (total == 0 && connect->direct_count == 0)
 		return false;
 
 	// Remove inconsistent connections
@@ -495,8 +495,6 @@ static void createConnection(IDnum nodeID, IDnum node2ID,
 {
 	Connection *connect = findConnection(nodeID, node2ID);
 
-	//printf("Creating connection %li -> %li\n", (long) nodeID, (long) node2ID);
-
 	if (connect != NULL)
 		readjustConnection(connect, distance, variance,
 				   direct_count, paired_count);
@@ -549,8 +547,13 @@ static void projectFromSingleRead(Node * node,
 		return;
 
 	if (weight) {
-		if ((connect = getConnectionBetweenNodes(node, target)))
+		if ((connect = getConnectionBetweenNodes(node, target))) {
+			printf("Incrementing connection %li -> %li\n", (long) getNodeID(node), (long) getNodeID(target));
 			incrementConnectionWeight(connect, 1);
+		} else if ((connect = getConnectionBetweenNodes(getTwinNode(node), getTwinNode(target)))) {
+			printf("Incrementing connection %li -> %li\n", (long) -getNodeID(node), (long) -getNodeID(target));
+			incrementConnectionWeight(connect, 1);
+		} 
 		return;
 	}
 
@@ -728,7 +731,7 @@ static void projectFromLongRead(Node * node, PassageMarker * marker,
 	double insertVariance;
 
 	// Going through single-read information
-	if (readNodeCounts[readIndex] > 1 && position > 0) {
+	if (readNodeCounts[readIndex] > 1 && position >= 0) {
 		readArray = readNodes[readIndex];
 		for (index = 0; index < readNodeCounts[readIndex]; index++)
 			projectFromSingleRead(node, &readArray[index],
@@ -1002,7 +1005,12 @@ static void removeGappedConnections()
 
 static void defineUniqueness(Node * node)
 {
-	setUniqueness(node, getNodeLength(node) > LENGTHCUTOFF);
+	if (getNodeLength(node) > LENGTHCUTOFF
+	    && arcCount(node) <= DEGREE_CUTOFF
+	    && arcCount (getTwinNode(node)) <= DEGREE_CUTOFF) 
+		setUniqueness(node, true);
+	else 
+		setUniqueness(node, false);
 }
 
 static void defineUniqueNodes()
@@ -1347,12 +1355,16 @@ void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
 	free(readNodes);
 }
 
-void scaffold_setPairedThreshold(pairedThreshold_arg) {
+void scaffold_setPairedThreshold(double pairedThreshold_arg) {
 	pairedThreshold = pairedThreshold_arg;
 }
 
-void scaffold_setUnreliableConnectionCutoff(val) {
+void scaffold_setUnreliableConnectionCutoff(IDnum val) {
 	UNRELIABLE_CONNECTION_CUTOFF = (IDnum) val;
+}
+
+void scaffold_setDegreeCutoff(int val) {
+	DEGREE_CUTOFF = val;
 }
 
 void cleanScaffoldMemory()

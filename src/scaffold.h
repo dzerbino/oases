@@ -41,6 +41,7 @@ IDnum getConnectionDirectCount(Connection * connect);
 void printOasesConnections(Category * cats);
 void scaffold_setPairedThreshold(double pairedThreshold);
 void scaffold_setUnreliableConnectionCutoff(int val);
+void scaffold_setDegreeCutoff(int val);
 
 void destroyConnection(Connection * connect, IDnum index);
 void cleanScaffoldMemory();

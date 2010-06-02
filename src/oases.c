@@ -25,7 +25,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 9;
+static int OASES_UPDATE_NUMBER = 10;
 
 static void printUsage()
 {
@@ -37,7 +37,7 @@ static void printUsage()
 	puts("Standard options:");
 	puts("\t-ins_length2 <integer>\t\t: expected distance between two paired-end reads in the second short-read dataset (default: no read pairing)");
 	puts("\t-ins_length_long <integer>\t: expected distance between two long paired-end reads (default: no read pairing)");
-	puts("\t-ins_length*_sd <integer>\t: est. standard deviation of respective dataset (default: 10\% of corresponding length)");
+	puts("\t-ins_length*_sd <integer>\t: est. standard deviation of respective dataset (default: 10% of corresponding length)");
 	puts("\t\t[replace '*' by nothing, '2' or '_long' as necessary]");
 	puts("\t-unused_reads <yes|no>\t\t: export unused reads in UnusedReads.fa file (default: no)");
 	puts("\t-amos_file <yes|no>\t\t: export assembly to AMOS file (default: no export)");
@@ -49,6 +49,7 @@ static void printUsage()
 	puts("\t-paired_cutoff <floating-point>\t: minimum ratio allowed between the numbers of observed and estimated connecting read pairs");
 	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.1)");
 	puts("\t-scaffolding <yes|no>\t\t:Allow gaps in transcripts (default: yes)");
+	puts("\t-degree_cutoff <integer>\t: Maximum allowed degree on either end of a contigg to consider it 'unique' (default: 3)");
 	puts("");
 	puts("Output:");
 	puts("\tdirectory/transcripts.fa");
@@ -130,6 +131,9 @@ int main(int argc, char **argv)
 		} else if (strcmp(arg, "-min_trans_lgth") == 0) {
 			sscanf(argv[arg_index], "%lli", &longlong_var);
 			minTransLength = (Coordinate) longlong_var;
+		} else if (strcmp(arg, "-degree_cutoff") == 0) {
+			sscanf(argv[arg_index], "%i", &arg_int);
+			setDegreeCutoff(arg_int);
 		} else if (strcmp(arg, "-paired_cutoff") == 0) {
 			sscanf(argv[arg_index], "%lf", &pairedThreshold);
 			setPairedThreshold(pairedThreshold);

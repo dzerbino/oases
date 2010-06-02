@@ -39,7 +39,6 @@
 #define THYMINE 3
 
 #define BLOCK_SIZE  100000
-#define LN2 1.4
 #define LENGTHCUTOFF 50
 
 typedef enum event_type {
@@ -681,12 +680,40 @@ static boolean lookForPossibleAlternativeDPStartFromNode(Node * node)
 	return false;
 }
 
+static boolean forcePossibleAlternativeDPStartFromNode(Node * node)
+{
+	Connection *connect, *connect2;
+
+	if (getNodeStatus(node) != 1)
+		return false;
+
+	for (connect = getConnection(getTwinNode(node)); connect != NULL;
+	     connect = getNextConnection(connect)) {
+		if (getConnectionStatus(connect)
+		    && getNodeStatus(getConnectionDestination(connect))) {
+			for (connect2 = getConnection(getTwinNode(node)); connect2 != NULL;
+			     connect2 = getNextConnection(connect2)) 
+				if (getNodeStatus(getConnectionDestination(connect2)))
+					setConnectionStatus(connect2, false);
+			printf("Forced new start %li\n",(long)  getNodeID(node));
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static boolean createAlternativeDPStarts(Locus * locus)
 {
 	IDnum index;
 
 	for (index = 0; index < locus->contigCount; index++)
 		if (lookForPossibleAlternativeDPStartFromNode
+		    (locus->contigs[index]))
+			return true;
+
+	for (index = 0; index < locus->contigCount; index++)
+		if (forcePossibleAlternativeDPStartFromNode
 		    (locus->contigs[index]))
 			return true;
 
@@ -872,6 +899,42 @@ static IDnum explainedContigs(Locus * locus)
 	return counter;
 }
 
+static void makeTranscriptOfNode(Locus * locus, Node* node) {
+	Transcript *transcript = allocateTranscript();
+	transcript->contigCount = 1;
+	transcript->contigs = callocOrExit(1, Node *);
+	transcript->contigs[0] = node;
+	transcript->distances = callocOrExit(1, Coordinate);
+	transcript->confidence = 1;
+	transcript->next = locus->transcript;
+	locus->transcript = transcript;
+}
+
+static void expressUnexplainedLongContigs(Locus * locus) {
+	IDnum index;
+	Node *node;
+	Transcript *transcript;
+
+	// Clear the scene
+	setLocusStatus(locus, false);
+
+	// Mark used contigs
+	for (transcript = locus->transcript; transcript != NULL;
+	     transcript = transcript->next) {
+		for (index = 0; index < transcript->contigCount; index++) {
+			node = transcript->contigs[index];
+			setSingleNodeStatus(node, true);
+		}
+	}
+
+	// Find unused contigs
+	for (index = 0; index < locus->contigCount; index++) {
+		node = locus->contigs[index];
+		if (!getNodeStatus(node))
+			makeTranscriptOfNode(locus, node);
+	}
+}
+
 static void computeHighlyExpressedLocusTranscripts(Locus * locus,
 						   double *scores)
 {
@@ -885,6 +948,9 @@ static void computeHighlyExpressedLocusTranscripts(Locus * locus,
 	while (counter++ < maxtrans
 	       && explainedContigs(locus) < locus->contigCount)
 		computeHighestExpressedLocusTranscript(locus, scores);
+
+	if (counter >= maxtrans)
+		expressUnexplainedLongContigs(locus);
 
 
 	setLocusStatus(locus, true);
@@ -2096,7 +2162,7 @@ static void exportAMOSMarker(FILE * outfile, PassageMarker * marker,
 
 	fprintf(outfile, "{TLE\n");
 	fprintf(outfile, "src:%d\n", getAbsolutePassMarkerSeqID(marker));
-	fprintf(outfile, "off:%lld\n", (long long) offset + getStartOffset(marker));
+	fprintf(outfile, "off:%lld\n", (long long) (offset + getStartOffset(marker)));
 	fprintf(outfile, "clr:%lld,%lld\n", (long long) sequenceStart, (long long) sequenceFinish);
 	fprintf(outfile, "}\n");
 }
@@ -2604,4 +2670,8 @@ IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci
 
 void setPairedThreshold(double pairedThreshold) {
 	scaffold_setPairedThreshold(pairedThreshold);
+}
+
+void setDegreeCutoff(int val) {
+	scaffold_setDegreeCutoff(val);
 }
