@@ -50,3 +50,7 @@ V 0.1.10
 - Compilation warnings addressed
 - Missing long read connections corrected
 - Missong short read connections corrected
+
+V 0.1.11
+- Compatibility issues with Velvet 1.0
+- Output of alignments

@@ -36,13 +36,12 @@ void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordina
 void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory);
 IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount);
 void exportAMOSTranscripts(Graph * graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char * directory);
+void exportTranscriptMappings(Locus * loci, IDnum locusCount, Graph * graph, ReadSet * reads, Coordinate minLength, char * directory);
 
 void removeIndirectConnections();
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount);
 void cleanLocusMemory(Locus * loci, IDnum locusCount);
 
-boolean *removeLowCoverageNodesAndDenounceDubiousReads(Graph * graph,
-						       double minCov);
 void clipTipsHard(Graph * graph);
 
 ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,

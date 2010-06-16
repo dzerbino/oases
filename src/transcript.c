@@ -1967,86 +1967,6 @@ ReadSet *importEmptyReadSet(char *filename, Coordinate ** lengthsPtr,
 
 }
 
-boolean *removeLowCoverageNodesAndDenounceDubiousReads(Graph * graph,
-						       double minCov)
-{
-	IDnum index;
-	Node *node;
-	boolean denounceReads = readStartsAreActivated(graph);
-	boolean *res = NULL;
-	ShortReadMarker *nodeArray, *shortMarker;
-	PassageMarker *marker;
-	IDnum maxIndex;
-	IDnum readID;
-	IDnum index2;
-
-	printf("Removing contigs with coverage < %f...\n", minCov);
-
-	if (denounceReads)
-		res = callocOrExit(sequenceCount(graph), boolean);
-
-	for (index = 1; index <= nodeCount(graph); index++) {
-		node = getNodeInGraph(graph, index);
-
-		if (getNodeLength(node) == 0)
-			continue;
-
-		if (getTotalCoverage(node) / getNodeLength(node) < minCov) {
-			if (denounceReads) {
-				nodeArray = getNodeReads(node, graph);
-				maxIndex = getNodeReadCount(node, graph);
-				for (index2 = 0; index2 < maxIndex;
-				     index2++) {
-					shortMarker =
-					    getShortReadMarkerAtIndex
-					    (nodeArray, index2);
-					readID =
-					    getShortReadMarkerID
-					    (shortMarker);
-					//printf("Dubious %d\n", readID);
-					if (readID > 0)
-						res[readID - 1] = true;
-					else
-						res[-readID - 1] = true;
-				}
-
-				nodeArray =
-				    getNodeReads(getTwinNode(node), graph);
-				maxIndex =
-				    getNodeReadCount(getTwinNode(node),
-						     graph);
-				for (index2 = 0; index2 < maxIndex;
-				     index2++) {
-					shortMarker =
-					    getShortReadMarkerAtIndex
-					    (nodeArray, index2);
-					readID =
-					    getShortReadMarkerID
-					    (shortMarker);
-					//printf("Dubious %d\n", readID);
-					if (readID > 0)
-						res[readID - 1] = true;
-					else
-						res[-readID - 1] = true;
-				}
-			}
-
-			while ((marker = getMarker(node))) {
-				if (!isInitial(marker)
-				    && !isTerminal(marker))
-					disconnectNextPassageMarker
-					    (getPreviousInSequence(marker),
-					     graph);
-				destroyPassageMarker(marker);
-			}
-			destroyNode(node, graph);
-		}
-	}
-
-	concatenateGraph(graph);
-	return res;
-}
-
 static Coordinate getTipLength(Node * node)
 {
 	Node *current = getTwinNode(node);
@@ -2385,6 +2305,8 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 		}
 
 		offset += getNodeLength(node);
+		if (firstUniqueMet == 0) 
+			offset += wordShift;
 	}
 
 	fprintf(outfile, "}\n");
@@ -2674,4 +2596,250 @@ void setPairedThreshold(double pairedThreshold) {
 
 void setDegreeCutoff(int val) {
 	scaffold_setDegreeCutoff(val);
+}
+
+static IDnum getReferenceCount(ReadSet * reads) {
+	IDnum index;
+
+	for (index = 0; index < reads->readCount; index++) 
+		if (reads->categories[index] <= 2 * CATEGORIES + 1)
+			break;
+
+	return index;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Reference identifiers
+//////////////////////////////////////////////////////////////////////////
+
+typedef struct referenceCoord_st ReferenceCoord;
+
+struct referenceCoord_st {
+	char * name;
+	Coordinate start;
+	Coordinate finish;
+	boolean positive_strand;
+};
+
+static ReferenceCoord * collectReferenceCoords(char * sequencesFilename, IDnum referenceCount) {
+	FILE * file = fopen(sequencesFilename, "r");
+	char line[MAXLINE];
+	char name[500];
+	Coordinate start, finish;
+	long long longlongvar;
+	IDnum refIndex = 0;
+	ReferenceCoord * refCoords = callocOrExit(referenceCount, ReferenceCoord);
+	int i;
+
+	while (fgets(line, MAXLINE, file)) {
+		if (line[0] == '>') {
+			if (strchr(line, ':')) {
+				sscanf(strtok(line, ":-\r\n"), ">%s", name);
+				sscanf(strtok(NULL, ":-\r\n"), "%lli", &longlongvar);
+				start = longlongvar;
+				sscanf(strtok(NULL, ":-\r\n"), "%lli", &longlongvar);
+				finish = longlongvar;
+				refCoords[refIndex].name = callocOrExit(strlen(name) + 1, char);  
+				if (start <= finish) {
+					strcpy(refCoords[refIndex].name, name);
+					refCoords[refIndex].start = start;
+					refCoords[refIndex].finish = finish;
+					refCoords[refIndex].positive_strand = true;
+				} else {
+					strcpy(refCoords[refIndex].name, name);
+					refCoords[refIndex].start = finish;
+					refCoords[refIndex].finish = start;
+					refCoords[refIndex].positive_strand = false;
+				}
+			} else {
+				for (i = strlen(line) - 1;
+				     i >= 0 && (line[i] == '\n' || line[i] == '\r'); i--) {
+					line[i] = '\0';
+				}
+
+				refCoords[refIndex].name = callocOrExit(strlen(name) + 1, char);  
+				strcpy(name, line + 1);
+				strcpy(refCoords[refIndex].name, name);
+				refCoords[refIndex].start = 1;
+				refCoords[refIndex].finish = -1;
+				refCoords[refIndex].positive_strand = true;
+			}
+			if (++refIndex == referenceCount)
+				break;	
+		}
+	}
+	
+	fclose(file);
+	return refCoords;
+}
+
+typedef struct refMap_st {
+	Coordinate start;
+	Coordinate finish;
+	IDnum refID;
+	Coordinate refStart;
+	Coordinate refFinish;
+} ReferenceMapping; 
+
+static int compareReferenceMappings(const void * A, const void * B) {
+	ReferenceMapping * refMapA = (ReferenceMapping *) A;
+	ReferenceMapping * refMapB = (ReferenceMapping *) B;
+	
+	if (refMapA->start < refMapB->start)
+		return -1;
+	else if (refMapA->start == refMapB->start)
+		return 0;
+	else 
+		return 1;
+}
+
+static void initializeReferenceMapping(ReferenceMapping * refMap, PassageMarker * marker, Transcript * transcript, IDnum nodeIndex, Coordinate nodeOffset) {
+	PassageMarker * finishMarker = marker;
+	Coordinate totalLength = getNodeLength(transcript->contigs[nodeIndex]);
+	IDnum index;
+
+	for (index = nodeIndex + 1; index < transcript->contigCount; index++) {
+		if (!getNextInSequence(finishMarker))
+			break;
+
+		if (getNode(getNextInSequence(finishMarker)) == transcript->contigs[index]) {
+			finishMarker = getNextInSequence(finishMarker);
+			totalLength += getNodeLength(transcript->contigs[index]);
+		}
+	}
+
+	refMap->start = nodeOffset + getStartOffset(marker);
+	refMap->finish = nodeOffset + totalLength - getFinishOffset(finishMarker); 
+	refMap->refID = getPassageMarkerSequenceID(marker);
+	refMap->refStart = getPassageMarkerStart(marker);
+	refMap->refFinish = getPassageMarkerFinish(finishMarker);
+}
+
+static void fprintfReferenceMapping(FILE * file, ReferenceMapping * mapping, ReferenceCoord * refCoords, int wordLength) {
+	ReferenceCoord * refCoord;
+	Coordinate start, finish;
+
+	if (mapping->refID > 0) 
+		refCoord = &refCoords[mapping->refID - 1];
+	else
+		refCoord = &refCoords[-mapping->refID - 1];
+
+	if (mapping->refID > 0) {
+		if (refCoord->positive_strand) {
+			start = refCoord->start + mapping->refStart;
+			finish = refCoord->start + mapping->refFinish + wordLength - 2;
+		} else {
+			start = refCoord->finish - mapping->refStart + wordLength - 1;
+			finish = refCoord->finish - mapping->refFinish + 1;
+		}
+	} else {
+		if (refCoord->positive_strand) {
+			start = refCoord->start + mapping->refStart + wordLength - 1;
+			finish = refCoord->start + mapping->refFinish + 1;
+		} else {
+			start = refCoord->finish - mapping->refStart; 
+			finish = refCoord->finish - mapping->refFinish + wordLength;  
+		}
+	}
+		
+	fprintf(file, "%lli\t%lli\t%s\t%lli\t%lli\n",
+		(long long) mapping->start + 1, (long long) mapping->finish + wordLength - 1, 
+		refCoord->name, (long long) start, (long long) finish);
+}
+
+static void exportTranscriptMapping(FILE * outfile, Transcript * transcript, IDnum locusIndex, IDnum transcriptIndex, ReadSet * reads, ReferenceCoord * refCoords, int wordLength) {
+	PassageMarker * marker;
+	ReferenceMapping * referenceMappings;
+	IDnum index;
+	IDnum referenceCount = 0;
+	IDnum nodeIndex;
+	Coordinate nodeOffset = 0;
+
+	// Count reference sequences
+	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++)
+		for (marker = getMarker(transcript->contigs[nodeIndex]); marker; marker = getNextInNode(marker))
+			if (reads->categories[getAbsolutePassMarkerSeqID(marker) - 1] > 2 * CATEGORIES + 1
+			    && (nodeIndex == 0 
+				|| getNode(getPreviousInSequence(marker)) != transcript->contigs[nodeIndex - 1]))
+				referenceCount++;
+
+	// Header
+	fprintf(outfile, ">Locus_%li_Transcript_%li\n", (long) locusIndex + 1, (long) transcriptIndex + 1);
+
+	// Create table
+	referenceMappings = callocOrExit(referenceCount, ReferenceMapping);	
+
+	// Initialize table
+	referenceCount = 0;
+	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++) {
+		for (marker = getMarker(transcript->contigs[nodeIndex]); marker; marker = getNextInNode(marker))
+			if (reads->categories[getAbsolutePassMarkerSeqID(marker) - 1] > 2 * CATEGORIES + 1
+			    && (nodeIndex == 0 
+				|| getNode(getPreviousInSequence(marker)) != transcript->contigs[nodeIndex - 1]))
+				initializeReferenceMapping(&referenceMappings[referenceCount++], marker, transcript, nodeIndex, nodeOffset);
+		nodeOffset += getNodeLength(transcript->contigs[nodeIndex]);
+		nodeOffset += transcript->distances[nodeIndex];
+	}
+
+	// Sort table
+	qsort(referenceMappings, referenceCount, sizeof(ReferenceMapping), compareReferenceMappings);
+
+	// Print table
+	for (index = 0; index < referenceCount; index++)
+		fprintfReferenceMapping(outfile, &referenceMappings[index], refCoords, wordLength);
+
+	// Clean table
+	free(referenceMappings);
+}
+
+static void exportLocusMapping(FILE * outfile, Locus * loci, IDnum locusIndex, ReadSet * reads, ReferenceCoord * refCoords, Coordinate minTransLength, int wordLength) {
+	Transcript * transcript;
+	IDnum transcriptIndex = 0;
+
+	for (transcript = loci[locusIndex].transcript; transcript != NULL;
+	     transcript = transcript->next)
+		if (getTranscriptLength(transcript) > minTransLength)
+			exportTranscriptMapping(outfile, transcript, locusIndex, transcriptIndex++, reads, refCoords, wordLength);
+		
+}
+
+void exportTranscriptMappings(Locus * loci, IDnum locusCount, 
+			      Graph * graph, ReadSet * reads,
+			      Coordinate minLength, char * directory)
+{
+	FILE * outfile;
+	IDnum locusIndex, refIndex;
+	ReferenceCoord * refCoords;
+	IDnum referenceCount = getReferenceCount(reads); 
+	char filename[10000];
+
+	strcpy(filename, directory);
+	strcat(filename, "/transcript-alignments.psa");
+	printf("Writing into pseudo-alignment file %s...\n", filename);
+	outfile = fopen(filename, "w");
+
+	if (referenceCount == 0)	
+		return;
+
+	strcpy(filename, directory);
+	strcat(filename, "/Sequences");
+	refCoords = collectReferenceCoords(filename, referenceCount);
+
+	strcpy(filename, directory);
+	strcat(filename, "/transcript-alignments.psa");
+	outfile = fopen(filename, "w");
+	if (outfile == NULL) {
+		printf("Could not write into %s, sorry\n", filename);
+		return;
+	} else {
+		printf("Writing contigs into %s...\n", filename);
+	}
+
+	for (locusIndex = 0; locusIndex < locusCount; locusIndex++) 
+		exportLocusMapping(outfile, loci, locusIndex, reads, refCoords, minLength, getWordLength(graph));
+
+	for (refIndex = 0; refIndex < referenceCount; refIndex++)
+		free(refCoords[refIndex].name);
+	free(refCoords);
+	fclose(outfile);
 }

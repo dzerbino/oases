@@ -548,10 +548,8 @@ static void projectFromSingleRead(Node * node,
 
 	if (weight) {
 		if ((connect = getConnectionBetweenNodes(node, target))) {
-			printf("Incrementing connection %li -> %li\n", (long) getNodeID(node), (long) getNodeID(target));
 			incrementConnectionWeight(connect, 1);
 		} else if ((connect = getConnectionBetweenNodes(getTwinNode(node), getTwinNode(target)))) {
-			printf("Incrementing connection %li -> %li\n", (long) -getNodeID(node), (long) -getNodeID(target));
 			incrementConnectionWeight(connect, 1);
 		} 
 		return;

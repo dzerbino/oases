@@ -41,6 +41,7 @@ static void printUsage()
 	puts("\t\t[replace '*' by nothing, '2' or '_long' as necessary]");
 	puts("\t-unused_reads <yes|no>\t\t: export unused reads in UnusedReads.fa file (default: no)");
 	puts("\t-amos_file <yes|no>\t\t: export assembly to AMOS file (default: no export)");
+	puts("\t-alignments <yes|no>\t\t: export a summary of contig alignment to the reference sequences (default: no)");
 	puts("\t--help\t\t\t\t: this help message");
 	puts("Advanced options:");
 	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default: 3)");
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
 	boolean unusedReads = false;
 	boolean exportAssembly = false;
 	boolean scaffolding = true;
+	boolean exportAlignments = false;
 
 	setProgramName("oases");
 
@@ -137,6 +139,9 @@ int main(int argc, char **argv)
 		} else if (strcmp(arg, "-paired_cutoff") == 0) {
 			sscanf(argv[arg_index], "%lf", &pairedThreshold);
 			setPairedThreshold(pairedThreshold);
+		} else if (strcmp(arg, "-alignments") == 0) {
+			exportAlignments =
+			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-amos_file") == 0) {
 			exportAssembly =
 			    (strcmp(argv[arg_index], "yes") == 0);
@@ -236,7 +241,8 @@ int main(int argc, char **argv)
 
 	dubious =
 	    removeLowCoverageNodesAndDenounceDubiousReads(graph,
-							  coverageCutoff);
+							  coverageCutoff,
+							  reads);
 	clipTipsHard(graph);
 
 	// Set insert lengths and their standard deviations
@@ -273,18 +279,27 @@ int main(int argc, char **argv)
 	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength);
 	printf("Finished heuristic approach, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
 
-	if (unusedReads || exportAssembly) {
-		destroyReadSet(reads);
-		reads =
-		    importReadSet(seqFilename);
-		convertSequences(reads);
-	}
+	destroyReadSet(reads);
+	reads =
+	    importReadSet(seqFilename);
+	convertSequences(reads);
 
 	if (unusedReads) 
 		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
 
 	if (exportAssembly) 
 		exportAMOSTranscripts(graph, loci, locusCount, reads, minTransLength, directory);
+
+	if (exportAlignments)
+		exportTranscriptMappings(loci, locusCount, graph, reads, minTransLength, directory);
+
+	strcpy(graphFilename, directory);
+	strcat(graphFilename, "/stats.txt");
+	displayGeneralStatistics(graph, graphFilename, reads);
+
+	strcpy(graphFilename, directory);
+	strcat(graphFilename, "/LastGraph");
+	exportGraph(graphFilename, graph, reads->tSequences);
 
 	cleanTranscriptMemory(loci, locusCount);
 
