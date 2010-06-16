@@ -9,7 +9,7 @@ DEF = -D MAXKMERLENGTH=$(MAXKMERLENGTH) -D CATEGORIES=$(CATEGORIES)
 
 VELVET_DIR=../../velvet
 VELVET_SRC_DIR=$(VELVET_DIR)/src
-VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph 
+VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
 VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 
