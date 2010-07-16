@@ -89,7 +89,7 @@ int main(int argc, char **argv)
 	FILE *file;
 	int arg_index, arg_int;
 	char *arg;
-	Coordinate *sequenceLengths = NULL;
+	IDnum *sequenceLengths = NULL;
 	Category cat;
 	long long longlong_var;
 	short int short_var;

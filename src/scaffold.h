@@ -22,7 +22,7 @@
 typedef struct connection_st Connection;
 
 void buildScaffold(Graph * graph, ReadSet * reads, boolean * dubious,
-		   Coordinate * lengths, boolean scaffolding);
+		   IDnum * lengths, boolean scaffolding);
 void transitiveReduction();
 
 Connection *getConnection(Node * node);

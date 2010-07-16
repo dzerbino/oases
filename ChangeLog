@@ -54,3 +54,7 @@ V 0.1.10
 V 0.1.11
 - Compatibility issues with Velvet 1.0
 - Output of alignments
+
+V 0.1.12
+- Compatibility with Velvet 1.0.06
+- Removal of near-identical transcripts

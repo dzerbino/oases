@@ -9,7 +9,7 @@ DEF = -D MAXKMERLENGTH=$(MAXKMERLENGTH) -D CATEGORIES=$(CATEGORIES)
 
 VELVET_DIR=../../velvet
 VELVET_SRC_DIR=$(VELVET_DIR)/src
-VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph
+VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph allocArray
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
 VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 
@@ -24,7 +24,7 @@ Z_LIB_FILES=$(Z_LIB_DIR)/*.o
 # Sparc/Solaris users: uncomment the following line
 # CFLAGS = -Wall -m64
 
-OBJ = obj/oases.o obj/transcript.o obj/scaffold.o
+OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
 default : oases

@@ -29,6 +29,14 @@ Normally, with a GNU environment, just type:
 
 > make 'VELVET_DIR=/path/to/velvet'
 
+Note that you need to communicate all the Velvet compilation settings during
+the Oases compilation. Therefore, if you want to make a debugging colorspace version of
+Oases with a maximum kmer length of 63 and 5 short-read libraries, the
+commandline becomes:
+
+> make colordebug 'VELVET_DIR=/path/to/velvet' 'MAXKMERLENGTH=63'\
+'CATEGORIES=5'
+
 ----------------------------------------------------------------------------------
 C/ RUNNING
 
