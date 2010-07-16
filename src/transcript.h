@@ -21,6 +21,15 @@
 
 typedef struct locus_st Locus;
 typedef struct transcript_st Transcript;
+typedef struct event_st Event;
+
+struct locus_st {
+	IDnum contigCount;
+	IDnum longContigCount;
+	Node **contigs;
+	Transcript *transcript;
+	Event *event;
+};
 
 void setUnreliableConnectionCutoff_oases(int val);
 
@@ -46,6 +55,8 @@ void clipTipsHard(Graph * graph);
 
 ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
 			    int wordLength);
+
+void removeNodeFromLocus(Node * node);
 
 void setPairedThreshold(double pairedThreshold);
 

@@ -20,12 +20,31 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "run.h"
+// Compilation
+#include "globals.h"
+
+// Utilities
+#include "graphStats.h"
+#include "utility.h"
+
+// Datastructures
+#include "kmer.h"
+#include "readSet.h"
+#include "tightString.h"
+#include "graph.h"
+
+// Graph operations
+#include "graph.h"
+#include "graphReConstruction.h"
+#include "concatenatedGraph.h"
+#include "correctedGraph.h"
+
+// Oases specific stuff 
 #include "transcript.h"
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 11;
+static int OASES_UPDATE_NUMBER = 12;
 
 static void printUsage()
 {
@@ -70,13 +89,13 @@ int main(int argc, char **argv)
 	FILE *file;
 	int arg_index, arg_int;
 	char *arg;
+	Coordinate *sequenceLengths = NULL;
 	Category cat;
 	long long longlong_var;
 	short int short_var;
 	Locus *loci;
 	IDnum locusCount;
 	ReadSet *reads;
-	Coordinate *lengths;
 	double coverageCutoff = 3;
 	boolean *dubious = NULL;
 	Coordinate minTransLength = 0;
@@ -231,13 +250,18 @@ int main(int argc, char **argv)
 		strcat(graphFilename, "/Graph2");
 		graph = importGraph(graphFilename);
 		reads =
-		    importEmptyReadSet(seqFilename, &lengths,
-				       getWordLength(graph));
+		    importReadSet(seqFilename);
+		convertSequences(reads);
 	} else {
 		puts("No Graph2 file to work with!");
 		puts("Please re-run Velvetg with the -read_trkg option on.");
 		return 1;
 	}
+
+	sequenceLengths =
+	    getSequenceLengths(reads, getWordLength(graph));
+
+	correctGraph(graph, sequenceLengths, reads->categories);
 
 	dubious =
 	    removeLowCoverageNodesAndDenounceDubiousReads(graph,
@@ -266,8 +290,16 @@ int main(int argc, char **argv)
 	if (insertLengthLong > -1)
 		pairUpReads(reads, 2 * CATEGORIES + 1);
 
+	strcpy(graphFilename, directory);
+	strcat(graphFilename, "/stats.txt");
+	displayGeneralStatistics(graph, graphFilename, reads);
+
+	strcpy(graphFilename, directory);
+	strcat(graphFilename, "/LastGraph");
+	exportGraph(graphFilename, graph, reads->tSequences);
+
 	loci =
-	    extractGraphLoci(graph, reads, dubious, lengths, &locusCount, scaffolding);
+	    extractGraphLoci(graph, reads, dubious, sequenceLengths, &locusCount, scaffolding);
 
 	computeTranscripts(loci, locusCount);
 	strcpy(transcriptFilename, directory);
@@ -279,11 +311,6 @@ int main(int argc, char **argv)
 	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength);
 	printf("Finished heuristic approach, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
 
-	destroyReadSet(reads);
-	reads =
-	    importReadSet(seqFilename);
-	convertSequences(reads);
-
 	if (unusedReads) 
 		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
 
@@ -292,14 +319,6 @@ int main(int argc, char **argv)
 
 	if (exportAlignments)
 		exportTranscriptMappings(loci, locusCount, graph, reads, minTransLength, directory);
-
-	strcpy(graphFilename, directory);
-	strcat(graphFilename, "/stats.txt");
-	displayGeneralStatistics(graph, graphFilename, reads);
-
-	strcpy(graphFilename, directory);
-	strcat(graphFilename, "/LastGraph");
-	exportGraph(graphFilename, graph, reads->tSequences);
 
 	cleanTranscriptMemory(loci, locusCount);
 

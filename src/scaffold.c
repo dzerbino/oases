@@ -235,7 +235,7 @@ static IDnum *computeReadToNodeCounts()
 	IDnum *readNodeCounts = callocOrExit(maxReadIndex, IDnum);
 	boolean *readMarker = callocOrExit(maxReadIndex, boolean);
 	ShortReadMarker *nodeArray, *shortMarker;
-	PassageMarker *marker;
+	PassageMarkerI marker;
 	Node *node;
 	IDnum nodeReadCount;
 
@@ -260,7 +260,7 @@ static IDnum *computeReadToNodeCounts()
 		}
 
 		// Long reads
-		for (marker = getMarker(node); marker != NULL;
+		for (marker = getMarker(node); marker != NULL_IDX;
 		     marker = getNextInNode(marker)) {
 			readIndex = getPassageMarkerSequenceID(marker);
 			if (readIndex < 0)
@@ -274,7 +274,7 @@ static IDnum *computeReadToNodeCounts()
 		}
 
 		// Clean up marker array
-		for (marker = getMarker(node); marker != NULL;
+		for (marker = getMarker(node); marker != NULL_IDX;
 		     marker = getNextInNode(marker)) {
 			readIndex = getPassageMarkerSequenceID(marker);
 			if (readIndex > 0)
@@ -316,7 +316,7 @@ static void computePartialReadToNodeMapping(IDnum nodeID,
 	Node *node = getNodeInGraph(graph, nodeID);
 	ShortReadMarker *nodeArray;
 	IDnum nodeReadCount;
-	PassageMarker *marker;
+	PassageMarkerI marker;
 
 	if (readStartsAreActivated(graph)) {
 		nodeArray = getNodeReads(node, graph);
@@ -335,7 +335,7 @@ static void computePartialReadToNodeMapping(IDnum nodeID,
 		}
 	}
 
-	for (marker = getMarker(node); marker != NULL;
+	for (marker = getMarker(node); marker != NULL_IDX;
 	     marker = getNextInNode(marker)) {
 		readIndex = getPassageMarkerSequenceID(marker);
 		if (readIndex < 0)
@@ -360,7 +360,7 @@ static void computePartialReadToNodeMapping(IDnum nodeID,
 		}
 	}
 
-	for (marker = getMarker(node); marker != NULL;
+	for (marker = getMarker(node); marker != NULL_IDX;
 	     marker = getNextInNode(marker)) {
 		readIndex = getPassageMarkerSequenceID(marker);
 		if (readIndex > 0)
@@ -710,7 +710,7 @@ static void projectFromShortRead(Node * node,
 
 }
 
-static void projectFromLongRead(Node * node, PassageMarker * marker,
+static void projectFromLongRead(Node * node, PassageMarkerI marker,
 				IDnum * readPairs, Category * cats,
 				ReadOccurence ** readNodes,
 				IDnum * readNodeCounts,
@@ -766,7 +766,7 @@ static void projectFromNode(IDnum nodeID,
 {
 	IDnum index;
 	ShortReadMarker *nodeArray, *shortMarker;
-	PassageMarker *marker;
+	PassageMarkerI marker;
 	Node *node;
 	IDnum nodeReadCount;
 
@@ -788,7 +788,7 @@ static void projectFromNode(IDnum nodeID,
 		}
 	}
 
-	for (marker = getMarker(node); marker != NULL;
+	for (marker = getMarker(node); marker != NULL_IDX;
 	     marker = getNextInNode(marker)) {
 		if (getPassageMarkerSequenceID(marker) > 0)
 			projectFromLongRead(node, marker, readPairs, cats,

@@ -28,10 +28,11 @@
 #include "passageMarker.h"
 #include "readSet.h"
 #include "locallyCorrectedGraph.h"
-#include "transcript.h"
+#include "locallyCorrectedGraph2.h"
 #include "scaffold.h"
 #include "concatenatedGraph.h"
 #include "tightString.h"
+#include "transcript.h"
 
 #define ADENINE 0
 #define CYTOSINE 1
@@ -50,8 +51,6 @@ typedef enum event_type {
 	alternative_polyA,
 } EventType;
 
-typedef struct event_st Event;
-
 struct event_st {
 	Node *nodes[4];
 	EventType type;
@@ -64,14 +63,6 @@ struct transcript_st {
 	Coordinate *distances;
 	double confidence;
 	Transcript *next;
-};
-
-struct locus_st {
-	IDnum contigCount;
-	IDnum longContigCount;
-	Node **contigs;
-	Transcript *transcript;
-	Event *event;
 };
 
 // Global params
@@ -423,6 +414,108 @@ static void orientLoci(Locus * loci, IDnum locusCount)
 	}
 }
 
+static void setNodeConnectionStatus(Node * node, boolean status)
+{
+	Connection *connect;
+
+	for (connect = getConnection(node); connect;
+	     connect = getNextConnection(connect))
+		if (getNodeStatus
+		    (getTwinNode(getConnectionDestination(connect))))
+			setConnectionStatus(connect, status);
+}
+
+void removeNodeFromLocus(Node * node) {
+	setNodeStatus(node, false);
+	setNodeConnectionStatus(node, false);
+}
+
+static void renumberLocusNodes(Locus * locus) {
+	IDnum index;
+	Node * node;
+	IDnum counter = 0;
+	Node ** newArray;
+
+	for (index = 0; index < locus->contigCount; index++) {
+		node = locus->contigs[index];
+		if (!getNodeStatus(node)) {
+			locus->contigs[index] = NULL;
+			counter++;
+			if (getUniqueness(node))
+				locus->longContigCount--;	
+		}
+	}
+	
+	if (counter == 0)
+		return;
+
+	newArray = callocOrExit(locus->contigCount - counter, Node *);
+	counter = 0;	
+
+	for (index = 0; index < locus->contigCount; index++) {
+		node = locus->contigs[index];
+
+		if (node == NULL) 
+			counter++;
+		else 
+			newArray[index - counter] = node;
+	}
+
+	free(locus->contigs);
+	locus->contigs = newArray;
+	locus->contigCount -= counter;
+}
+
+static Connection *getReverseActiveConnection(Node * node)
+{
+	Connection *connect;
+
+	for (connect = getConnection(getTwinNode(node)); connect;
+	     connect = getNextConnection(connect))
+		if (getNodeStatus(getConnectionDestination(connect)))
+			return connect;
+
+	return NULL;
+}
+
+static void simplifyFromNode(Node * node, Locus * locus) {
+	if (getReverseActiveConnection(node))
+		return;
+
+	correctGraphLocally2(node, locus);
+}
+
+static void setLocusStatus(Locus * locus, boolean status)
+{
+	IDnum index;
+
+	for (index = 0; index < locus->contigCount; index++)
+		setSingleNodeStatus(locus->contigs[index], status);
+}
+
+static void simplifyLocus(Locus * locus) {
+	IDnum index;
+	
+	setLocusStatus(locus, true);
+
+	for (index = 0; index < locus->contigCount; index++) 
+		simplifyFromNode(locus->contigs[index], locus);
+
+	renumberLocusNodes(locus);
+	setLocusStatus(locus, false);
+}
+
+static void simplifyLoci(Locus * loci, IDnum locusCount) {
+	IDnum index;
+
+	prepareGraphForLocalCorrections2(graph);
+
+	for (index = 0; index < locusCount; index++) 
+		simplifyLocus(&(loci[index]));
+
+	deactivateLocalCorrectionSettings2();
+}
+
 Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 			boolean * dubious, Coordinate * lengths,
 			IDnum * locusCount, boolean scaffolding)
@@ -442,7 +535,8 @@ Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 	orientLoci(loci, *locusCount);
 
 	transitiveReduction();
-
+	simplifyLoci(loci, *locusCount);
+	
 	return loci;
 }
 
@@ -469,7 +563,7 @@ static Coordinate getTotalCoverage(Node * node)
 {
 	Category cat;
 	Coordinate res = 0;
-	PassageMarker *marker;
+	PassageMarkerI marker;
 
 	for (cat = 0; cat < CATEGORIES; cat++)
 		res += getVirtualCoverage(node, cat);
@@ -479,25 +573,6 @@ static Coordinate getTotalCoverage(Node * node)
 		res += getPassageMarkerLength(marker);
 
 	return res;
-}
-
-static void setLocusStatus(Locus * locus, boolean status)
-{
-	IDnum index;
-
-	for (index = 0; index < locus->contigCount; index++)
-		setSingleNodeStatus(locus->contigs[index], status);
-}
-
-static void setNodeConnectionStatus(Node * node, boolean status)
-{
-	Connection *connect;
-
-	for (connect = getConnection(node); connect;
-	     connect = getNextConnection(connect))
-		if (getNodeStatus
-		    (getTwinNode(getConnectionDestination(connect))))
-			setConnectionStatus(connect, status);
 }
 
 static void setLocusConnectionStatus(Locus * locus, boolean status)
@@ -605,18 +680,6 @@ static Node *chooseBestUnvisitedPredecessor(Node * node)
 	return nextNode;
 }
 
-static Connection *getReverseActiveConnection(Node * node)
-{
-	Connection *connect;
-
-	for (connect = getConnection(getTwinNode(node)); connect;
-	     connect = getNextConnection(connect))
-		if (getNodeStatus(getConnectionDestination(connect)))
-			return connect;
-
-	return false;
-}
-
 static Connection *getReverseMarkedConnection(Node * node)
 {
 	Connection *connect;
@@ -627,7 +690,7 @@ static Connection *getReverseMarkedConnection(Node * node)
 		    && getNodeStatus(getConnectionDestination(connect)))
 			return connect;
 
-	return false;
+	return NULL;
 }
 
 static void destroyNodeBackConnections(Node * node)
@@ -642,7 +705,7 @@ static void destroyNodeBackConnections(Node * node)
 	}
 }
 
-static void createAlternativeDPStartFromNode(Node * node)
+static void createAlternativeDPStartFromNode(Node * node, Locus * locus)
 {
 	Node *current = node;
 	Node *next;
@@ -654,13 +717,16 @@ static void createAlternativeDPStartFromNode(Node * node)
 		setSingleNodeStatus(current, 3);
 	}
 
-	if (getConnectionBetweenNodes(node, getTwinNode(current)))
+	if (getConnectionBetweenNodes(node, getTwinNode(current))) {
 		destroyNodeBackConnections(node);
-	else
+		simplifyFromNode(node, locus);
+	} else {
 		destroyNodeBackConnections(current);
+		simplifyFromNode(current, locus);
+	}
 }
 
-static boolean lookForPossibleAlternativeDPStartFromNode(Node * node)
+static boolean lookForPossibleAlternativeDPStartFromNode(Node * node, Locus * locus)
 {
 	Connection *connect;
 
@@ -672,7 +738,7 @@ static boolean lookForPossibleAlternativeDPStartFromNode(Node * node)
 		if (getConnectionStatus(connect)
 		    && getNodeStatus(getConnectionDestination(connect)) ==
 		    2) {
-			createAlternativeDPStartFromNode(node);
+			createAlternativeDPStartFromNode(node, locus);
 			return true;
 		}
 	}
@@ -680,7 +746,7 @@ static boolean lookForPossibleAlternativeDPStartFromNode(Node * node)
 	return false;
 }
 
-static boolean forcePossibleAlternativeDPStartFromNode(Node * node)
+static boolean forcePossibleAlternativeDPStartFromNode(Node * node, Locus * locus)
 {
 	Connection *connect, *connect2;
 
@@ -695,6 +761,7 @@ static boolean forcePossibleAlternativeDPStartFromNode(Node * node)
 			     connect2 = getNextConnection(connect2)) 
 				if (getNodeStatus(getConnectionDestination(connect2)))
 					setConnectionStatus(connect2, false);
+			simplifyFromNode(node, locus);
 			printf("Forced new start %li\n",(long)  getNodeID(node));
 			return true;
 		}
@@ -707,15 +774,22 @@ static boolean createAlternativeDPStarts(Locus * locus)
 {
 	IDnum index;
 
-	for (index = 0; index < locus->contigCount; index++)
+	for (index = 0; index < locus->contigCount; index++) {
 		if (lookForPossibleAlternativeDPStartFromNode
-		    (locus->contigs[index]))
+		    (locus->contigs[index], locus)) {
+			renumberLocusNodes(locus);
 			return true;
+		}
+	}
 
-	for (index = 0; index < locus->contigCount; index++)
+	for (index = 0; index < locus->contigCount; index++) {
 		if (forcePossibleAlternativeDPStartFromNode
-		    (locus->contigs[index]))
+		    (locus->contigs[index], locus)) {
+			renumberLocusNodes(locus);
 			return true;
+		}
+	}
+
 
 	return false;
 }
@@ -839,7 +913,7 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 
 	// OK, let's name a volunteer...
 	if (markedNodes == NULL) {
-		createAlternativeDPStartFromNode(locus->contigs[0]);
+		createAlternativeDPStartFromNode(locus->contigs[0], locus);
 		computeHighestExpressedLocusTranscript(locus, scores);
 		return;
 	}
@@ -1399,6 +1473,7 @@ void computeTranscripts(Locus * loci, IDnum locusCount) {
 	double *scores = callocOrExit(2 * nodeCount(graph), double);
 
 	resetNodeStatus(graph);
+	prepareGraphForLocalCorrections2(graph);
 
 	for (index = 0; index < locusCount; index++) {
 		locus = &(loci[index]);
@@ -1409,6 +1484,7 @@ void computeTranscripts(Locus * loci, IDnum locusCount) {
 		setLocusStatus(locus, false);
 	}
 	
+	deactivateLocalCorrectionSettings2();
 	free(scores);
 }
 
@@ -1967,76 +2043,6 @@ ReadSet *importEmptyReadSet(char *filename, Coordinate ** lengthsPtr,
 
 }
 
-static Coordinate getTipLength(Node * node)
-{
-	Node *current = getTwinNode(node);
-	Coordinate length = 0;
-
-	if (simpleArcCount(current) > 1)
-		return getNodeLength(node);
-
-	while (current != NULL && simpleArcCount(getTwinNode(current)) < 2
-	       && simpleArcCount(current) < 2) {
-		length += getNodeLength(current);
-		current = getDestination(getArc(current));
-	}
-
-	return length;
-}
-
-void clipTipsHard(Graph * graph)
-{
-	IDnum index;
-	Node *current, *twin;
-	boolean modified = true;
-	int Wordlength = getWordLength(graph);
-	PassageMarker *marker;
-
-	puts("Clipping short tips off graph, drastic");
-
-	while (modified) {
-		modified = false;
-		for (index = 1; index <= nodeCount(graph); index++) {
-			current = getNodeInGraph(graph, index);
-
-			if (current == NULL)
-				continue;
-
-			twin = getTwinNode(current);
-
-			if (getArc(current) == NULL
-			    && getTipLength(current) < 2 * Wordlength) {
-				while ((marker = getMarker(current))) {
-					if (!isInitial(marker)
-					    && !isTerminal(marker))
-						disconnectNextPassageMarker
-						    (getPreviousInSequence
-						     (marker), graph);
-					destroyPassageMarker(marker);
-				}
-				destroyNode(current, graph);
-				modified = true;
-			} else if (getArc(twin) == NULL
-				   && getTipLength(twin) <
-				   2 * Wordlength) {
-				while ((marker = getMarker(current))) {
-					if (!isInitial(marker)
-					    && !isTerminal(marker))
-						disconnectNextPassageMarker
-						    (getPreviousInSequence
-						     (marker), graph);
-					destroyPassageMarker(marker);
-				}
-				destroyNode(twin, graph);
-				modified = true;
-			}
-		}
-	}
-
-	concatenateGraph(graph);
-	printf("%d nodes left\n", nodeCount(graph));
-}
-
 static void exportAMOSLib(FILE * outfile, Graph * graph, Category cat)
 {
 	Coordinate distance = getInsertLength(graph, cat * 2);
@@ -2054,7 +2060,7 @@ static void exportAMOSLib(FILE * outfile, Graph * graph, Category cat)
 	fprintf(outfile, "}\n");
 }
 
-static void exportAMOSMarker(FILE * outfile, PassageMarker * marker,
+static void exportAMOSMarker(FILE * outfile, PassageMarkerI marker,
 			     Coordinate nodeLength, Coordinate offset,
 			     int wordShift, boolean firstUniqueMet)
 {
@@ -2094,8 +2100,7 @@ static void exportAMOSShortMarker(FILE * outfile, ShortReadMarker * marker,
 	    getShortReadMarkerPosition(marker) -
 	    getShortReadMarkerOffset(marker)
 	    + offset;
-	TightString *sequence =
-	    reads->tSequences[getShortReadMarkerID(marker) - 1];
+	TightString *sequence = getTightStringInArray(reads->tSequences, getShortReadMarkerID(marker) - 1);
 
 	if (firstUniqueMet == 1)
 		read_offset -= wordShift;
@@ -2116,8 +2121,7 @@ static void exportAMOSReverseShortMarker(FILE * outfile,
 					 int wordShift, ReadSet * reads,
 					 Coordinate offset, boolean firstUniqueMet)
 {
-	TightString *sequence =
-	    reads->tSequences[getShortReadMarkerID(marker) - 1];
+	TightString *sequence = getTightStringInArray(reads->tSequences, getShortReadMarkerID(marker) - 1);
 
 	Coordinate read_offset =
 	    nodeLength - getShortReadMarkerPosition(marker) +
@@ -2143,7 +2147,7 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 			     IDnum locusID, IDnum transcriptID, IDnum internalIndex, IDnum iid)
 {
 	Coordinate start;
-	PassageMarker *marker;
+	PassageMarkerI marker;
 	ShortReadMarker *shortMarkerArray, *shortMarker;
 	Coordinate index, maxIndex;
 	int wordShift = getWordLength(graph) - 1;
@@ -2274,7 +2278,7 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 		else if (firstUniqueMet == -1 && getNodeLength(node) >= wordShift) 
 			firstUniqueMet = 0;
 
-		for (marker = getMarker(node); marker != NULL;
+		for (marker = getMarker(node); marker != NULL_IDX;
 		     marker = getNextInNode(marker))
 			exportAMOSMarker(outfile, marker, getNodeLength(node),
 					 offset, wordShift, firstUniqueMet);
@@ -2465,15 +2469,15 @@ void exportAMOSTranscripts(Graph * graph,
 		    getInsertLength(graph,
 				    reads->categories[index - 1]) >= 0) {
 			exportAMOSRead(outfile,
-				       reads->tSequences[index - 1], index,
+				       getTightStringInArray(reads->tSequences, index - 1), index,
 				       index);
 			index++;
 			exportAMOSRead(outfile,
-				       reads->tSequences[index - 1], index,
+				       getTightStringInArray(reads->tSequences, index - 1), index,
 				       index - 1);
 		} else {
 			exportAMOSRead(outfile,
-				       reads->tSequences[index - 1], index,
+				       getTightStringInArray(reads->tSequences, index - 1), index,
 				       -1);
 		}
 	}
@@ -2496,7 +2500,7 @@ static void markUsedReads(Node * node, boolean * used)
 	IDnum readID;
 	ShortReadMarker * shortReadArray, * shortReadMarker;
 	IDnum shortReadCount, shortReadIndex;
-	PassageMarker * marker;
+	PassageMarkerI marker;
 
 	if (node == NULL || getNodeStatus(node))
 		return;
@@ -2504,7 +2508,7 @@ static void markUsedReads(Node * node, boolean * used)
 		setNodeStatus(node, true);
 	
 	// Long reads
-	for(marker = getMarker(node); marker != NULL; marker = getNextInNode(marker)) {
+	for(marker = getMarker(node); marker != NULL_IDX; marker = getNextInNode(marker)) {
 		readID = getPassageMarkerSequenceID(marker);
 		if (readID < 0)
 			readID = -readID;
@@ -2558,7 +2562,7 @@ void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, R
 
 	for (readID = 1; readID <= sequenceCount(graph); readID++) 
 		if (!used[readID])
-			exportTightString(outfile, reads->tSequences[readID - 1], readID);	
+			exportTightString(outfile, getTightStringInArray(reads->tSequences, readID - 1), readID);	
 
 	free(outFilename);
 	free(used);	
@@ -2693,8 +2697,8 @@ static int compareReferenceMappings(const void * A, const void * B) {
 		return 1;
 }
 
-static void initializeReferenceMapping(ReferenceMapping * refMap, PassageMarker * marker, Transcript * transcript, IDnum nodeIndex, Coordinate nodeOffset) {
-	PassageMarker * finishMarker = marker;
+static void initializeReferenceMapping(ReferenceMapping * refMap, PassageMarkerI marker, Transcript * transcript, IDnum nodeIndex, Coordinate nodeOffset) {
+	PassageMarkerI finishMarker = marker;
 	Coordinate totalLength = getNodeLength(transcript->contigs[nodeIndex]);
 	IDnum index;
 
@@ -2748,7 +2752,7 @@ static void fprintfReferenceMapping(FILE * file, ReferenceMapping * mapping, Ref
 }
 
 static void exportTranscriptMapping(FILE * outfile, Transcript * transcript, IDnum locusIndex, IDnum transcriptIndex, ReadSet * reads, ReferenceCoord * refCoords, int wordLength) {
-	PassageMarker * marker;
+	PassageMarkerI marker;
 	ReferenceMapping * referenceMappings;
 	IDnum index;
 	IDnum referenceCount = 0;
