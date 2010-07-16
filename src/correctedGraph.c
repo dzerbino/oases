@@ -1911,178 +1911,6 @@ static boolean markerLeadsToNode(PassageMarkerI marker, Node * node)
 	return false;
 }
 
-static void transferNodeData(Node * source, Node * target)
-{
-	Arc *arc;
-	Node *twinSource = getTwinNode(source);
-	Node *twinTarget = getTwinNode(target);
-	Node *destination;
-
-	// Time & Outward references
-	if (getNodePrevious(source) == source) {
-		setNodeTime(target, getNodeTime(source));
-		setNodePrevious(target, target);
-	}
-
-	if (getNodeTime(twinSource) == -1);
-	else if (getNodePrevious(twinSource) == twinSource) {
-		setNodeTime(twinTarget, getNodeTime(twinSource));
-		setNodePrevious(twinTarget, twinTarget);
-	} else if (getNodeTime(twinTarget) == -1
-		   || getNodeTime(twinSource) < getNodeTime(twinTarget)
-		   || (getNodeTime(twinSource) == getNodeTime(twinTarget)
-		       && !isPreviousToNode(twinTarget, twinSource))) {
-		setNodeTime(twinTarget, getNodeTime(twinSource));
-		setNodePrevious(getNodePrevious(twinSource), twinTarget);
-	}
-
-	if (getNodePrevious(twinTarget) == source)
-		setNodePrevious(target, twinTarget);
-
-	// Inward references:
-	for (arc = getArc(source); arc != NULL; arc = getNextArc(arc)) {
-		destination = getDestination(arc);
-		if (getNodePrevious(destination) == source)
-			setNodePrevious(target, destination);
-	}
-
-	// Fib Heap refs
-	remapNodeFibHeapReferencesOntoNode(source, target);
-	remapNodeFibHeapReferencesOntoNode(twinSource, twinTarget);
-
-	// Starting point
-	if (startingNode == source)
-		startingNode = target;
-	else if (startingNode == twinSource)
-		startingNode = twinTarget;
-
-	if (getNode(slowPath) == twinSource)
-		slowPath = getNextInSequence(slowPath);
-	if (getNode(fastPath) == twinSource)
-		fastPath = getNextInSequence(fastPath);
-
-	// Next node 
-	if (source == activeNode) {
-		activeNode = target;
-		todo =
-		    &todoLists[getNodeID(activeNode) + nodeCount(graph)];
-	}
-	concatenateTodoLists(target, source);
-
-	if (twinSource == activeNode) {
-		activeNode = twinTarget;
-		todo =
-		    &todoLists[getNodeID(activeNode) + nodeCount(graph)];
-	}
-}
-
-// Replaces two consecutive nodes into a single equivalent node
-// The extra memory is freed
-static void concatenateNodesAndVaccinate(Node * nodeA, Node * nodeB,
-					 Graph * graph)
-{
-	PassageMarkerI marker, tmpMarker;
-	Node *twinA = getTwinNode(nodeA);
-	Node *twinB = getTwinNode(nodeB);
-	Arc *arc;
-	Category cat;
-
-	//printf("Concatenating nodes %ld and %ld\n", getNodeID(nodeA), getNodeID(nodeB));
-	// Arc management:
-	// Freeing useless arcs
-	while (getArc(nodeA) != NULL)
-		destroyArc(getArc(nodeA), graph);
-
-	// Correct arcs
-	for (arc = getArc(nodeB); arc != NULL; arc = getNextArc(arc)) {
-		if (getDestination(arc) != twinB)
-			createAnalogousArcAndVaccinate(nodeA,
-						       getDestination(arc),
-						       arc);
-		else
-			createAnalogousArcAndVaccinate(nodeA, twinA, arc);
-	}
-
-	// Passage marker management in node A:
-	for (marker = getMarker(nodeA); marker != NULL_IDX;
-	     marker = getNextInNode(marker))
-		if (isTerminal(marker))
-			incrementFinishOffset(marker,
-					      getNodeLength(nodeB));
-
-	// Swapping new born passageMarkers from B to A
-	for (marker = getMarker(nodeB); marker != NULL_IDX; marker = tmpMarker) {
-		tmpMarker = getNextInNode(marker);
-
-		if (isInitial(marker)) {
-			extractPassageMarker(marker);
-			transposePassageMarker(marker, nodeA);
-			incrementStartOffset(marker, getNodeLength(nodeA));
-		} else
-			disconnectNextPassageMarker(getPreviousInSequence
-						    (marker), graph);
-	}
-
-	// Read starts
-	concatenateReadStarts(nodeA, nodeB, graph);
-
-	// Descriptor management 
-	appendDescriptors(nodeA, nodeB);
-
-	// Update uniqueness:
-	setUniqueness(nodeA, getUniqueness(nodeA) || getUniqueness(nodeB));
-
-	// Update virtual coverage
-	for (cat = 0; cat < CATEGORIES; cat++)
-		incrementVirtualCoverage(nodeA, cat,
-					 getVirtualCoverage(nodeB, cat));
-
-	// Update virtual coverage
-	for (cat = 0; cat < CATEGORIES; cat++)
-		incrementOriginalVirtualCoverage(nodeA, cat,
-						 getOriginalVirtualCoverage
-						 (nodeB, cat));
-
-	// Freeing gobbled node
-	destroyNode(nodeB, graph);
-}
-
-static void simplifyNode(Node * node)
-{
-	Node *twin = getTwinNode(node);
-	Node *destination, *twinDestination;
-
-	if (!hasSingleArc(node))
-		return;
-
-	destination = getDestination(getArc(node));
-	twinDestination = getTwinNode(destination);
-
-	while (hasSingleArc(node)
-	       && hasSingleArc(twinDestination)
-	       && destination != twin && destination != node) {
-		transferNodeData(destination, node);
-		concatenateNodesAndVaccinate(node, destination, graph);
-
-		if (!hasSingleArc(node))
-			return;
-		destination = getDestination(getArc(node));
-		twinDestination = getTwinNode(destination);
-	}
-
-}
-
-static void concatenatePathNodes(PassageMarkerI pathStart)
-{
-	PassageMarkerI pathMarker;
-
-	//puts("Removing null loops");
-	for (pathMarker = pathStart; pathMarker != NULL_IDX;
-	     pathMarker = getNextInSequence(pathMarker)) {
-		simplifyNode(getNode(pathMarker));
-	}
-}
-
 #define SLOW_TO_FAST true
 #define FAST_TO_SLOW false
 
@@ -2176,10 +2004,12 @@ static void cleanUpRedundancy()
 	//puts("Concatenation");
 
 	// Freeing up memory  
+	/*
 	if (slowMarker != NULL_IDX)
 		concatenatePathNodes(slowPath);
 	else
 		concatenatePathNodes(fastPath);
+	*/
 
 	//puts("Vaccinatting");
 

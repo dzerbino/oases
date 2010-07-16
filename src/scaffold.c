@@ -995,7 +995,7 @@ static void removeGappedConnections()
 			distance -= halfNodeLength;	
 			distance -= getNodeLength(connect->destination)/2;
 
-			if (distance > 0)
+			if (distance > 0 && connect->direct_count == 0)
 				destroyConnection(connect, index - nodes);
 		}
 	}

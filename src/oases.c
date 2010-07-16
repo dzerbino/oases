@@ -261,13 +261,13 @@ int main(int argc, char **argv)
 	sequenceLengths =
 	    getSequenceLengths(reads, getWordLength(graph));
 
-	correctGraph(graph, sequenceLengths, reads->categories);
-
 	dubious =
 	    removeLowCoverageNodesAndDenounceDubiousReads(graph,
 							  coverageCutoff,
 							  reads);
 	clipTipsHard(graph);
+
+	correctGraph(graph, sequenceLengths, reads->categories);
 
 	// Set insert lengths and their standard deviations
 	createReadPairingArray(reads);

@@ -58,3 +58,8 @@ V 0.1.11
 V 0.1.12
 - Compatibility with Velvet 1.0.06
 - Removal of near-identical transcripts
+
+V 0.1.13
+- Inversion of bubble smoothing and coverage cutoff
+- Weakened the '-scaffold no' 
+- TourBus loss of connections bug
