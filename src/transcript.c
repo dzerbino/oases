@@ -532,7 +532,8 @@ Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 	printf("Counted %li mRNA loci\n", (long) *locusCount);
 
 	loci = extractConnectedComponents(*locusCount);
-	orientLoci(loci, *locusCount);
+	if (doubleStrandedGraph(graph))
+		orientLoci(loci, *locusCount);
 
 	transitiveReduction();
 	simplifyLoci(loci, *locusCount);

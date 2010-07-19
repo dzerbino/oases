@@ -63,3 +63,6 @@ V 0.1.13
 - Inversion of bubble smoothing and coverage cutoff
 - Weakened the '-scaffold no' 
 - TourBus loss of connections bug
+
+V 0.1.14
+- Strand-specific read orientation.
