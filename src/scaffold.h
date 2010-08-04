@@ -37,6 +37,7 @@ double getConnectionWeight(Connection * connect);
 void setConnectionWeight(Connection * connect, double weight);
 Coordinate getConnectionDistance(Connection * connect);
 IDnum getConnectionDirectCount(Connection * connect);
+IDnum getConnectionPairedCount(Connection * connect);
 
 void printOasesConnections(Category * cats);
 void scaffold_setPairedThreshold(double pairedThreshold);

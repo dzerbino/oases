@@ -1961,13 +1961,15 @@ void exportLocusGraph(FILE * file, IDnum index, Locus * loci)
 			if (getNodeStatus
 			    (getTwinNode
 			     (getConnectionDestination(connect)))) {
-				fprintf(file, "%lli -> %lli [label=%lli",
+				fprintf(file, "%lli -> %lli [label=%lli_%li_%li",
 					-nodeID,
 					(long long)
 					-getNodeID(getConnectionDestination
 						   (connect)),
 					(long long)
-					getConnectionDistance(connect));
+					getConnectionDistance(connect),
+					(long) getConnectionPairedCount(connect),
+					(long) getConnectionDirectCount(connect));
 				if (!getConnectionStatus(connect))
 					fprintf(file, "XXX");
 				fprintf(file, "]\n");

@@ -138,8 +138,8 @@ static IDnum expectedNumberOfConnections(IDnum IDA, Connection * connect,
 		shortLength = getNodeLength(B);
 	}
 
-	densityA = counts[cat][IDA + nodeCount(graph)] / getNodeLength(A);
-	densityB = counts[cat][IDB + nodeCount(graph)] / getNodeLength(B);
+	densityA = counts[cat][IDA + nodeCount(graph)] / (double) getNodeLength(A);
+	densityB = counts[cat][IDB + nodeCount(graph)] / (double) getNodeLength(B);
 	minDensity = densityA > densityB ? densityB : densityA;
 
 	D = getConnectionDistance(connect) - (longLength +
@@ -171,7 +171,7 @@ void destroyConnection(Connection * connect, IDnum nodeID)
 {
 	Connection *previous, *next;
 
-	//printf("Destroying connection from %li to %li\n", nodeID, getNodeID(connect->destination));
+	//printf("Destroying connection from %li to %li\n", (long) nodeID, (long) getNodeID(connect->destination));
 
 	if (connect == NULL)
 		return;
@@ -622,7 +622,7 @@ static void projectFromReadPair(Node * node, ReadOccurence * readOccurence,
 			    readOccurence->offset -
 			    getNodeLength(target) / 2;
 			score =
-			    K / sqrt(insertVariance) *
+			    K *
 			    exp((insertLength - distance) * (distance -
 							     insertLength)
 				/ (2 * insertVariance));
@@ -978,6 +978,7 @@ static void removeGappedConnections()
 	Coordinate halfNodeLength;
 	Coordinate distance;
 	IDnum nodes = nodeCount(graph);
+	int overlap = getWordLength(graph) - 1;
 
 	for (index = 0; index < maxNodeIndex; index++) {
 		node = getNodeInGraph(graph, index - nodes);
@@ -995,7 +996,7 @@ static void removeGappedConnections()
 			distance -= halfNodeLength;	
 			distance -= getNodeLength(connect->destination)/2;
 
-			if (distance > 0 && connect->direct_count == 0)
+			if (distance > overlap && connect->direct_count == 0)
 				destroyConnection(connect, index - nodes);
 		}
 	}
@@ -1370,4 +1371,8 @@ void cleanScaffoldMemory()
 	free(scaffold);
 	destroyRecycleBin(connectionMemory);
 	connectionMemory = NULL;
+}
+
+IDnum getConnectionPairedCount(Connection * connect) {
+	return connect->paired_count;
 }

@@ -66,3 +66,7 @@ V 0.1.13
 
 V 0.1.14
 - Strand-specific read orientation.
+
+V 0.1.15
+- Increased paired-end sensitivity
+- Weakened the 'scaffold no' clipping
