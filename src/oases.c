@@ -44,7 +44,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 15;
+static int OASES_UPDATE_NUMBER = 16;
 
 static void printUsage()
 {
@@ -264,7 +264,10 @@ int main(int argc, char **argv)
 	dubious =
 	    removeLowCoverageNodesAndDenounceDubiousReads(graph,
 							  coverageCutoff,
-							  reads);
+							  reads,
+							  false,
+							  0,
+							  "nothing");
 	clipTipsHard(graph);
 
 	correctGraph(graph, sequenceLengths, reads->categories);

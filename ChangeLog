@@ -70,3 +70,7 @@ V 0.1.14
 V 0.1.15
 - Increased paired-end sensitivity
 - Weakened the 'scaffold no' clipping
+
+V 0.1.16 
+- Compilation warning
+- Compatibility with latest Velvet
