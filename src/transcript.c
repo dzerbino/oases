@@ -537,7 +537,7 @@ Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 
 	transitiveReduction();
 	simplifyLoci(loci, *locusCount);
-	
+
 	return loci;
 }
 
@@ -980,7 +980,7 @@ static void makeTranscriptOfNode(Locus * locus, Node* node) {
 	transcript->contigs = callocOrExit(1, Node *);
 	transcript->contigs[0] = node;
 	transcript->distances = callocOrExit(1, Coordinate);
-	transcript->confidence = 1;
+	transcript->confidence = 1 / (double) locus->contigCount;
 	transcript->next = locus->transcript;
 	locus->transcript = transcript;
 }
@@ -1175,7 +1175,8 @@ static void exportLocusTranscripts(Locus * locus, IDnum locusID,
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		transcriptCount++;
+		if (getTranscriptLength(transcript) > minTransLength)
+			transcriptCount++;
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
@@ -1879,7 +1880,8 @@ static void exportLocusContigs(IDnum locusID, Locus * locus,
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		transcriptCount++;
+		if (getTranscriptLength(transcript) > minTransLength)
+			transcriptCount++;
 
 	exportLocusNodes(locusID, locus, outfile);
 	for (transcript = locus->transcript; transcript != NULL;

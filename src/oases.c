@@ -44,7 +44,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 16;
+static int OASES_UPDATE_NUMBER = 18;
 
 static void printUsage()
 {
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 	ReadSet *reads;
 	double coverageCutoff = 3;
 	boolean *dubious = NULL;
-	Coordinate minTransLength = 0;
+	Coordinate minTransLength = 100;
 	double pairedThreshold = 0.1;
 	boolean unusedReads = false;
 	boolean exportAssembly = false;

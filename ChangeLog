@@ -74,3 +74,11 @@ V 0.1.15
 V 0.1.16 
 - Compilation warning
 - Compatibility with latest Velvet
+
+V 0.1.17
+- Confidence score bug for singleton contigs
+- Transcript count bug for loci with short transcripts
+
+V 0.1.18
+- Updated readme file
+- Reverted default minimum transcript length to 100bp
