@@ -27,6 +27,14 @@ void clipTipsHard(Graph * graph);
 
 void correctGraph(Graph * graph, IDnum * sequenceLengths, Category * sequenceCategories);
 
+// Clumsy and dirty patch
+boolean *removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(Graph * graph,
+						       double minCov,
+						       ReadSet * reads,
+						       boolean export,
+						       Coordinate minLength,
+						       char *filename);
+
 // Black arts:
 void setMaxReadLength(int value);
 void setMaxGaps(int value);

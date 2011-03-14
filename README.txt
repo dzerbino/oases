@@ -15,7 +15,7 @@ Marcel Schulz (marcel.schulz@molgen.mpg.de)
 ----------------------------------------------------------------------------------
 A/ REQUIREMENTS
 
-        Oases should function on any standard 64bit Linx environment with
+        Oases should function on any standard 64bit Linux environment with
 gcc. A good amount of physical memory (12GB to start with, more is no luxury)
 is recommended.
 	Before trying to compile Oases, you must install the Velvet package:

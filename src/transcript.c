@@ -180,7 +180,6 @@ static void fillUpComponent(Node * node)
 	if (getNodeStatus(node) || !getUniqueness(node))
 		return;
 	setSingleNodeStatus(node, true);
-
 	recordNode(node);
 
 	for (connect = getConnection(node); connect != NULL;
@@ -257,7 +256,7 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 			locus->longContigCount = countMarkedNodes();
 			locus->contigs =
 			    callocOrExit(locus->longContigCount, Node *);
-			while (markedNodes)
+			while (markedNodes) 
 				locus->contigs[nodeIndex++] =
 				    popNodeRecord();
 
@@ -613,6 +612,28 @@ static Node *findHeaviestNonUsedNode(Locus * locus)
 	return nextNode;
 }
 
+static double bestSuccessorWeight(Node * node, double * scores) {
+	Connection *connect;
+	double maxWeight = 0;
+
+	for (connect = getConnection(node); connect != NULL;
+	     connect = getNextConnection(connect)) {
+		if (getConnectionStatus(connect)
+		    && getNodeStatus(getTwinNode(getConnectionDestination(connect)))) {
+			if (heavyNode && getTwinNode(getConnectionDestination(connect)) == heavyNode) {
+				return 100000 * getConnectionWeight(connect);
+			// DEBUG: modified for real DP
+			} else if (scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+				maxWeight = scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect);
+			}
+		}
+	}
+
+	if (heavyNode && getTwinNode(node) == heavyNode)
+		maxWeight *= 100000;
+
+	return maxWeight;
+}
 
 static void computeDPScore(Node * node, double *scores)
 {
@@ -628,19 +649,30 @@ static void computeDPScore(Node * node, double *scores)
 				maxWeight = getConnectionWeight(connect);
 				predecessor = getConnectionDestination(connect);
 				break;
-			} else if (getConnectionWeight(connect) > maxWeight) {
-				maxWeight = getConnectionWeight(connect);
+			// DEBUG: modified for real DP
+			} else if (scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+				maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect);
 				predecessor = getConnectionDestination(connect);
 			}
 		}
 	}
 
-	if (heavyNode && (node == heavyNode || predecessor == heavyNode)) 
+	if (predecessor == NULL) {
+		scores[getNodeID(node) + nodeCount(graph)] = 0;
+		return;
+	}
+
+	if (getNodeStatus(getTwinNode(node)) == 2)
+		scores[getNodeID(node) + nodeCount(graph)] =
+		    scores[getNodeID(predecessor) + nodeCount(graph)] - bestSuccessorWeight(node, scores);
+	else if (heavyNode && (node == heavyNode || predecessor == heavyNode)) 
 		scores[getNodeID(node) + nodeCount(graph)] =
 		    100000 * maxWeight + scores[getNodeID(predecessor) + nodeCount(graph)];
 	else
 		scores[getNodeID(node) + nodeCount(graph)] =
 		    maxWeight + scores[getNodeID(predecessor) + nodeCount(graph)];
+
+	//printf("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
 }
 
 static void propagateDP(Node * node)
@@ -763,7 +795,7 @@ static boolean forcePossibleAlternativeDPStartFromNode(Node * node, Locus * locu
 				if (getNodeStatus(getConnectionDestination(connect2)))
 					setConnectionStatus(connect2, false);
 			simplifyFromNode(node, locus);
-			printf("Forced new start %li\n",(long)  getNodeID(node));
+			//printf("Forced new start %li\n",(long)  getNodeID(node));
 			return true;
 		}
 	}
@@ -795,7 +827,7 @@ static boolean createAlternativeDPStarts(Locus * locus)
 	return false;
 }
 
-static Node *chooseBestPredecessor(Node * node)
+static Node *chooseBestPredecessor(Node * node, double * scores)
 {
 	Node *nextNode = NULL;
 	double maxWeight = 0;
@@ -811,17 +843,18 @@ static Node *chooseBestPredecessor(Node * node)
 		    && getNodeStatus(heavyNode) == 2)
 			return heavyNode;
 
+		// DEBUG: Modified for real DP
 		if (getNodeStatus(getConnectionDestination(connect)) == 2
-		    && getConnectionWeight(connect) > maxWeight) {
+		    && scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
 			nextNode = getConnectionDestination(connect);
-			maxWeight = getConnectionWeight(connect);
+			maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect);
 		}
 	}
 
 	return nextNode;
 }
 
-static IDnum extractMajorityPath(Node * maxNode)
+static IDnum extractMajorityPath(Node * maxNode, double * scores)
 {
 	Node *node = maxNode;
 	IDnum nodesInList = 1;
@@ -831,7 +864,7 @@ static IDnum extractMajorityPath(Node * maxNode)
 
 	while (getReverseMarkedConnection(node)) {
 		//printf("Back tracking through node %li\n", (signed long) getNodeID(node));
-		node = chooseBestPredecessor(node);
+		node = chooseBestPredecessor(node, scores);
 		if (node == NULL)
 			break;
 		recordNode(node);
@@ -942,7 +975,7 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 		}
 	}
 
-	nodesInList = extractMajorityPath(maxNode);
+	nodesInList = extractMajorityPath(maxNode, scores);
 	produceTranscript(locus, nodesInList);
 	locus->transcript->confidence =
 	    locus->transcript->contigCount / (double) locus->contigCount;
@@ -980,7 +1013,8 @@ static void makeTranscriptOfNode(Locus * locus, Node* node) {
 	transcript->contigs = callocOrExit(1, Node *);
 	transcript->contigs[0] = node;
 	transcript->distances = callocOrExit(1, Coordinate);
-	transcript->confidence = 1 / (double) locus->contigCount;
+	//transcript->confidence = 1 / (double) locus->contigCount;
+	transcript->confidence = 1;
 	transcript->next = locus->transcript;
 	locus->transcript = transcript;
 }
@@ -1027,7 +1061,6 @@ static void computeHighlyExpressedLocusTranscripts(Locus * locus,
 	if (counter >= maxtrans)
 		expressUnexplainedLongContigs(locus);
 
-
 	setLocusStatus(locus, true);
 	setLocusConnectionStatus(locus, false);
 	setLocusStatus(locus, false);
@@ -1071,7 +1104,7 @@ void cleanLocusMemory(Locus * loci, IDnum locusCount)
 }
 
 static void exportContigSequence(Node * node, FILE * outfile, int *column,
-				 boolean showKmer)
+				 int showKmer)
 {
 	char *string = expandNodeFragment(node, 0, getNodeLength(node),
 					  getWordLength(graph));
@@ -1121,19 +1154,68 @@ static void exportGapSequence(Coordinate length, FILE * outfile,
 	}
 }
 
+static int getStartOfTranscript(Transcript * transcript) {
+	int index = 0; 
+	Coordinate totalLength = 0;
+	int showKmer = getWordLength(graph) - 1;
+
+	// Possible skipping of initial short nodes
+	while (index < transcript->contigCount && totalLength <= showKmer && getNodeLength(transcript->contigs[index]) < showKmer) {
+		totalLength += getNodeLength(transcript->contigs[index]);		
+		if (index < transcript->contigCount + 1) {
+			if (transcript->distances[index] < 10)
+				totalLength += 10;
+			else 
+				totalLength += transcript->distances[index];
+		}
+		index++;
+	}
+
+	if (index == transcript->contigCount || totalLength > showKmer)
+		return 0;
+	else 
+		return index;
+}
+
+static Coordinate getTranscriptLength(Transcript * transcript) {
+	IDnum index = getStartOfTranscript(transcript);
+	Coordinate totalLength = 0;
+
+	if (transcript->contigCount == 0)
+		return 0;
+
+	if (getNodeLength(transcript->contigs[index]) >= getWordLength(graph) - 1) 
+		totalLength = getWordLength(graph) - 1;
+
+	for (; index < transcript->contigCount; index++) {
+		totalLength += getNodeLength(transcript->contigs[index]);
+		if (index < transcript->contigCount - 1) {
+			if (transcript->distances[index] < getWordLength(graph) && getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
+				totalLength += transcript->distances[index];
+			} else if (transcript->distances[index] > 0 && transcript->distances[index] < 10) {
+				totalLength += 10;
+			} else {
+				totalLength += transcript->distances[index];
+			}
+		}
+	}
+
+	return totalLength;
+}
+
 static void exportTranscript(Transcript * transcript, IDnum locusID,
 			     IDnum transID, IDnum transcriptCount, FILE * outfile)
 {
 	IDnum index;
 	int column = 0;
-	boolean showKmer = getWordLength(graph) - 1;
+	int showKmer = getWordLength(graph) - 1;
 
 	// Header
-	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f\n",
-		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence);
+	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) getTranscriptLength(transcript));
 
 	// Sequence
-	for (index = 0; index < transcript->contigCount; index++) {
+	for (index = getStartOfTranscript(transcript); index < transcript->contigCount; index++) {
 		exportContigSequence(transcript->contigs[index], outfile,
 				     &column, showKmer);
 		if (index < transcript->contigCount - 1) {
@@ -1147,23 +1229,10 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 
 			exportGapSequence(transcript->distances[index] - showKmer, outfile, &column);
 		}
-
 	}
 
 	if (column > 0)
 		fprintf(outfile, "\n");
-}
-
-static Coordinate getTranscriptLength(Transcript * transcript) {
-	Coordinate total = 0;
-	IDnum index;
-
-	for (index = 0; index < transcript->contigCount; index++) {
-		total += getNodeLength(transcript->contigs[index]);
-		total += transcript->distances[index];	
-	}
-
-	return total;
 }
 
 static void exportLocusTranscripts(Locus * locus, IDnum locusID,
@@ -1175,12 +1244,12 @@ static void exportLocusTranscripts(Locus * locus, IDnum locusID,
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		if (getTranscriptLength(transcript) > minTransLength)
+		if (getTranscriptLength(transcript) >= minTransLength)
 			transcriptCount++;
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		if (getTranscriptLength(transcript) > minTransLength)
+		if (getTranscriptLength(transcript) >= minTransLength)
 			exportTranscript(transcript, locusID, index++, transcriptCount, outfile);
 }
 
@@ -1840,15 +1909,21 @@ void exportASEvents(Locus * loci, IDnum locusCount, char *filename)
 static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 				    IDnum transID, IDnum transcriptCount, FILE * outfile)
 {
-	IDnum index;
-	Coordinate totalLength = getWordLength(graph) - 1;
+	IDnum index = getStartOfTranscript(transcript);
+	Coordinate totalLength = 0;
+
+	if (transcript->contigCount == 0)
+		return;
 
 	// Header
-	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f\n",
-		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence);
+	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) getTranscriptLength(transcript));
+
+	if (getNodeLength(transcript->contigs[index]) >= getWordLength(graph) - 1) 
+		totalLength = getWordLength(graph) - 1;
 
 	// Sequence
-	for (index = 0; index < transcript->contigCount; index++) {
+	for (index = getStartOfTranscript(transcript); index < transcript->contigCount; index++) {
 		totalLength += getNodeLength(transcript->contigs[index]);
 		fprintf(outfile, "%li:%lli",
 			(long) getNodeID(transcript->contigs[index]),
@@ -1880,13 +1955,13 @@ static void exportLocusContigs(IDnum locusID, Locus * locus,
 
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		if (getTranscriptLength(transcript) > minTransLength)
+		if (getTranscriptLength(transcript) >= minTransLength)
 			transcriptCount++;
 
 	exportLocusNodes(locusID, locus, outfile);
 	for (transcript = locus->transcript; transcript != NULL;
 	     transcript = transcript->next)
-		if (getTranscriptLength(transcript) > minTransLength)
+		if (getTranscriptLength(transcript) >= minTransLength)
 			exportTranscriptContigs(transcript, locusID, index++, transcriptCount,
 						outfile);
 }
@@ -2392,7 +2467,7 @@ static void exportAMOSLocus(FILE * outfile, ReadSet * reads, Locus * locus, IDnu
 	IDnum transcriptID = 0;
 
 	for (transcript = locus->transcript; transcript; transcript = transcript->next) 
-		if (getTranscriptLength(transcript) > minTransLength)
+		if (getTranscriptLength(transcript) >= minTransLength)
 			exportAMOSTranscript(outfile, reads, transcript, locusID, transcriptID++, graph);
 }
 
@@ -2561,7 +2636,7 @@ void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, R
 
 	for (locusIndex = 0; locusIndex < locusCount; locusIndex++)
 		for (transcript = loci[locusIndex].transcript; transcript; transcript = transcript->next)
-			if (getTranscriptLength(transcript) > minTransLength)
+			if (getTranscriptLength(transcript) >= minTransLength)
 				for(nodeID = 0; nodeID < transcript->contigCount; nodeID++)
 					markUsedReads(transcript->contigs[nodeID], used);
 
@@ -2586,7 +2661,7 @@ IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci
 
 	for (locusIndex = 0; locusIndex < locusCount; locusIndex++)
 		for (transcript = loci[locusIndex].transcript; transcript; transcript = transcript->next)
-			if (getTranscriptLength(transcript) > minTransLength)
+			if (getTranscriptLength(transcript) >= minTransLength)
 				for(nodeID = 0; nodeID < transcript->contigCount; nodeID++)
 					markUsedReads(transcript->contigs[nodeID], used);
 
@@ -2807,7 +2882,7 @@ static void exportLocusMapping(FILE * outfile, Locus * loci, IDnum locusIndex, R
 
 	for (transcript = loci[locusIndex].transcript; transcript != NULL;
 	     transcript = transcript->next)
-		if (getTranscriptLength(transcript) > minTransLength)
+		if (getTranscriptLength(transcript) >= minTransLength)
 			exportTranscriptMapping(outfile, transcript, locusIndex, transcriptIndex++, reads, refCoords, wordLength);
 		
 }

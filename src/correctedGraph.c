@@ -2568,3 +2568,170 @@ void setMaxDivergence(double value)
 	}
 	MAXDIVERGENCE = value;
 }
+
+// 
+// What follows is a very ugly patch which will have to be normalized with the Velvet API
+// My sincere apologies
+//
+static Coordinate getTotalCoverage(Node * node)
+{
+	Category cat;
+	Coordinate coverage = 0;
+
+	for (cat = 0; cat < CATEGORIES; cat++)
+		coverage += getVirtualCoverage(node, cat);
+
+	return coverage;
+}
+
+static void exportLongNodeSequence(FILE * outfile, Node * node, Graph * graph) {
+	TightString *tString;
+	Coordinate position;
+	char nucleotide;
+	int WORDLENGTH = getWordLength(graph);
+	GapMarker *gap;
+	IDnum nodeIndex = getNodeID(node);
+
+	tString = expandNode(node, WORDLENGTH);
+	velvetFprintf(outfile, ">NODE_%ld_length_%lld_cov_%f\n",
+		(long) nodeIndex, (long long) getNodeLength(node),
+		(getVirtualCoverage(node, 0)
+		 + getVirtualCoverage(node, 1)
+		 + readCoverage(node)) /
+		(float) getNodeLength(node));
+
+	gap = getGap(node, graph);
+	for (position = 0; position < WORDLENGTH; position++) {
+		if (position % 60 == 0 && position > 0)
+			velvetFprintf(outfile, "\n"); 
+		if (gap && position >= getGapFinish(gap))
+			gap = getNextGap(gap);
+
+		if (gap == NULL || position < getGapStart(gap)) {
+			nucleotide =
+			    getNucleotideChar(position, tString);
+			velvetFprintf(outfile, "%c", nucleotide);
+		} else
+			velvetFprintf(outfile, "N");
+	}
+
+	gap = getGap(node, graph);
+	for (; position < getLength(tString); position++) {
+		if (position % 60 == 0)
+			velvetFprintf(outfile, "\n");
+
+		if (gap
+		    && position - WORDLENGTH + 1 >=
+		    getGapFinish(gap))
+			gap = getNextGap(gap);
+
+		if (gap == NULL
+		    || position - WORDLENGTH + 1 <
+		    getGapStart(gap)) {
+			nucleotide =
+			    getNucleotideChar(position, tString);
+			velvetFprintf(outfile, "%c", nucleotide);
+		} else
+			velvetFprintf(outfile, "N");
+	}
+	velvetFprintf(outfile, "\n");
+	destroyTightString (tString);
+}
+
+
+boolean *removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(Graph * graph,
+						       double minCov,
+						       ReadSet * reads,
+						       boolean export,
+						       Coordinate minLength,
+						       char *filename)
+{
+	IDnum index;
+	Node *node;
+	boolean denounceReads = readStartsAreActivated(graph);
+	boolean *res = NULL; 
+	ShortReadMarker *nodeArray, *shortMarker;
+	PassageMarkerI marker;
+	IDnum maxIndex;
+	IDnum readID;
+	IDnum index2;
+	FILE * outfile = NULL;
+
+	velvetLog("Removing contigs with coverage < %f...\n", minCov);
+		
+	if (denounceReads)
+		res = callocOrExit(sequenceCount(graph), boolean);
+		
+	if (export) {
+		outfile = fopen(filename, "w");
+
+		if (outfile == NULL) {
+			velvetLog("Could not write into %s, sorry\n", filename);
+			return res;
+		} else {
+			velvetLog("Writing contigs into %s...\n", filename);
+		}
+	}
+
+
+	for (index = 1; index <= nodeCount(graph); index++) {
+		node = getNodeInGraph(graph, index);
+
+		if (getNodeLength(node) == 0)
+			continue;
+
+		if (getTotalCoverage(node) / getNodeLength(node) < minCov 
+		    && getMarker(node) == NULL_IDX) {
+			if (denounceReads) {
+				nodeArray = getNodeReads(node, graph);
+				maxIndex = getNodeReadCount(node, graph);
+				for (index2 = 0; index2 < maxIndex; index2++) {
+					shortMarker =
+					    getShortReadMarkerAtIndex(nodeArray,
+								      index2);
+					readID = getShortReadMarkerID(shortMarker);
+					//velvetLog("Dubious %d\n", readID);
+					if (readID > 0)
+						res[readID - 1] = true;
+					else
+						res[-readID - 1] = true;
+				}
+
+				nodeArray = getNodeReads(getTwinNode(node), graph);
+				maxIndex =
+				    getNodeReadCount(getTwinNode(node), graph);
+				for (index2 = 0; index2 < maxIndex; index2++) {
+					shortMarker =
+					    getShortReadMarkerAtIndex(nodeArray,
+								      index2);
+					readID = getShortReadMarkerID(shortMarker);
+					//velvetLog("Dubious %d\n", readID);
+					if (readID > 0)
+						res[readID - 1] = true;
+					else
+						res[-readID - 1] = true;
+				}
+			}
+
+			while ((marker = getMarker(node))) {
+				if (!isInitial(marker)
+				    && !isTerminal(marker))
+					disconnectNextPassageMarker
+					    (getPreviousInSequence(marker),
+					     graph);
+				destroyPassageMarker(marker);
+			}
+
+			if (export && getNodeLength(node) > minLength) 
+				exportLongNodeSequence(outfile, node, graph);
+
+			destroyNode(node, graph);
+		}
+	}
+
+	if (export)
+		fclose(outfile);
+
+	concatenateGraph(graph);
+	return res;
+}

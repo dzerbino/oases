@@ -82,3 +82,8 @@ V 0.1.17
 V 0.1.18
 - Updated readme file
 - Reverted default minimum transcript length to 100bp
+
+V 0.1.19
+- Corrected the output of contig sequences to match the length cutoff 
+- Conservative coverage cutoff for long sequences (mergeing)
+- Penalty for hairpin assemblies

@@ -44,7 +44,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 18;
+static int OASES_UPDATE_NUMBER = 19;
 
 static void printUsage()
 {
@@ -67,6 +67,7 @@ static void printUsage()
 	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 4)");
 	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default: hash-length)");
 	puts("\t-paired_cutoff <floating-point>\t: minimum ratio allowed between the numbers of observed and estimated connecting read pairs");
+	puts("\t-conserveLong <yes|no>\t\t:Preserve contigs mapping onto long sequences to be preserved from coverage cutoff (default: no)");
 	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.1)");
 	puts("\t-scaffolding <yes|no>\t\t:Allow gaps in transcripts (default: yes)");
 	puts("\t-degree_cutoff <integer>\t: Maximum allowed degree on either end of a contigg to consider it 'unique' (default: 3)");
@@ -102,7 +103,8 @@ int main(int argc, char **argv)
 	double pairedThreshold = 0.1;
 	boolean unusedReads = false;
 	boolean exportAssembly = false;
-	boolean scaffolding = true;
+	boolean scaffolding = false;
+	boolean conserveLong = false;
 	boolean exportAlignments = false;
 
 	setProgramName("oases");
@@ -169,6 +171,9 @@ int main(int argc, char **argv)
 			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-scaffolding") == 0) {
 			scaffolding =
+			    (strcmp(argv[arg_index], "yes") == 0);
+		} else if (strcmp(arg, "-conserveLong") == 0) {
+			conserveLong =
 			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-min_pair_count") == 0) {
 			sscanf(argv[arg_index], "%i", &arg_int);
@@ -261,16 +266,27 @@ int main(int argc, char **argv)
 	sequenceLengths =
 	    getSequenceLengths(reads, getWordLength(graph));
 
-	dubious =
-	    removeLowCoverageNodesAndDenounceDubiousReads(graph,
-							  coverageCutoff,
-							  reads,
-							  false,
-							  0,
-							  "nothing");
+	if (!conserveLong)
+	    dubious =
+		removeLowCoverageNodesAndDenounceDubiousReads(graph,
+							      coverageCutoff,
+							      reads,
+							      false,
+							      0,
+							      "nothing");
+	else 
+	    dubious =
+		removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(graph,
+							      coverageCutoff,
+							      reads,
+							      false,
+							      0,
+							      "nothing");
 	clipTipsHard(graph);
 
 	correctGraph(graph, sequenceLengths, reads->categories);
+
+	//exportLongNodeSequences("toto.fa", graph, 50);
 
 	// Set insert lengths and their standard deviations
 	createReadPairingArray(reads);
@@ -303,6 +319,8 @@ int main(int argc, char **argv)
 
 	loci =
 	    extractGraphLoci(graph, reads, dubious, sequenceLengths, &locusCount, scaffolding);
+
+	//minTransLength -= (getWordLength(graph) - 1);
 
 	computeTranscripts(loci, locusCount);
 	strcpy(transcriptFilename, directory);
