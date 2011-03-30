@@ -44,7 +44,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 19;
+static int OASES_UPDATE_NUMBER = 20;
 
 static void printUsage()
 {
@@ -295,9 +295,9 @@ int main(int argc, char **argv)
 			std_dev[cat] = insertLength[cat] / 10;
 		setInsertLengths(graph, cat,
 				 insertLength[cat], std_dev[cat]);
-		if (insertLength[cat] > -1) {
-			pairUpReads(reads, 2 * cat + 1);
-		}
+		//if (insertLength[cat] > -1) {
+		//	pairUpReads(reads, 2 * cat + 1);
+		//}
 
 		detachDubiousReads(reads, dubious);
 	}
@@ -306,8 +306,8 @@ int main(int argc, char **argv)
 		std_dev_long = insertLengthLong / 10;
 	setInsertLengths(graph, CATEGORIES, insertLengthLong,
 			 std_dev_long);
-	if (insertLengthLong > -1)
-		pairUpReads(reads, 2 * CATEGORIES + 1);
+	//if (insertLengthLong > -1)
+	//	pairUpReads(reads, 2 * CATEGORIES + 1);
 
 	strcpy(graphFilename, directory);
 	strcat(graphFilename, "/stats.txt");

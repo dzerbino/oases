@@ -435,7 +435,7 @@ void prepareGraphForLocalCorrections2(Graph * argGraph)
 
 	dheapNodes = mallocOrExit(2 * nodes + 1, DFibHeapNode *);
 
-	printf("Allocating array %p\n", (void *) dheapNodes);
+	//printf("Allocating array %p\n", (void *) dheapNodes);
 
 	dheap = newDFibHeap();
 

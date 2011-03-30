@@ -42,6 +42,9 @@
 #define BLOCK_SIZE  100000
 #define LENGTHCUTOFF 50
 
+// DEBUG
+// boolean debug = false;
+
 typedef enum event_type {
 	mutually_exclusive_exons,
 	skipped_exon,
@@ -536,7 +539,6 @@ Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 
 	transitiveReduction();
 	simplifyLoci(loci, *locusCount);
-
 	return loci;
 }
 
@@ -606,7 +608,8 @@ static Node *findHeaviestNonUsedNode(Locus * locus)
 		}
 	}
 
-	//printf("Next node will be %li\n", (long) getNodeID(nextNode));
+	//if (debug)
+	//    printf("Next node will be %li\n", (long) getNodeID(nextNode));
 
 	heavyNode = nextNode;
 	return nextNode;
@@ -620,17 +623,11 @@ static double bestSuccessorWeight(Node * node, double * scores) {
 	     connect = getNextConnection(connect)) {
 		if (getConnectionStatus(connect)
 		    && getNodeStatus(getTwinNode(getConnectionDestination(connect)))) {
-			if (heavyNode && getTwinNode(getConnectionDestination(connect)) == heavyNode) {
-				return 100000 * getConnectionWeight(connect);
-			// DEBUG: modified for real DP
-			} else if (scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+			if (scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
 				maxWeight = scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect);
 			}
 		}
 	}
-
-	if (heavyNode && getTwinNode(node) == heavyNode)
-		maxWeight *= 100000;
 
 	return maxWeight;
 }
@@ -649,30 +646,43 @@ static void computeDPScore(Node * node, double *scores)
 				maxWeight = getConnectionWeight(connect);
 				predecessor = getConnectionDestination(connect);
 				break;
-			// DEBUG: modified for real DP
-			} else if (scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
-				maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect);
+			} else if (getConnectionWeight(connect) > maxWeight) {
+				maxWeight = getConnectionWeight(connect);
 				predecessor = getConnectionDestination(connect);
 			}
 		}
 	}
 
 	if (predecessor == NULL) {
-		scores[getNodeID(node) + nodeCount(graph)] = 0;
-		return;
+		if (heavyNode && node == heavyNode)
+		    scores[getNodeID(node) + nodeCount(graph)] = 100000;
+		else
+		    scores[getNodeID(node) + nodeCount(graph)] = 0;
+
+		//if (debug)
+		//    printf("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
+		    return;
 	}
 
-	if (getNodeStatus(getTwinNode(node)) == 2)
-		scores[getNodeID(node) + nodeCount(graph)] =
-		    scores[getNodeID(predecessor) + nodeCount(graph)] - bestSuccessorWeight(node, scores);
-	else if (heavyNode && (node == heavyNode || predecessor == heavyNode)) 
-		scores[getNodeID(node) + nodeCount(graph)] =
-		    100000 * maxWeight + scores[getNodeID(predecessor) + nodeCount(graph)];
-	else
-		scores[getNodeID(node) + nodeCount(graph)] =
-		    maxWeight + scores[getNodeID(predecessor) + nodeCount(graph)];
+	// Starting score
+	scores[getNodeID(node) + nodeCount(graph)] =
+	    scores[getNodeID(predecessor) + nodeCount(graph)];
 
-	//printf("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
+	// Additional Score
+        if (heavyNode && (node == heavyNode || predecessor == heavyNode)) 
+		scores[getNodeID(node) + nodeCount(graph)] +=
+		    100000 * maxWeight;
+	else
+		scores[getNodeID(node) + nodeCount(graph)] +=
+		    maxWeight;
+
+	// Penalty for backtracking
+	if (getNodeStatus(getTwinNode(node)) == 2)
+		scores[getNodeID(node) + nodeCount(graph)] -=
+		    bestSuccessorWeight(node, scores);
+
+	//if (debug)
+	//    printf("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
 }
 
 static void propagateDP(Node * node)
@@ -843,11 +853,10 @@ static Node *chooseBestPredecessor(Node * node, double * scores)
 		    && getNodeStatus(heavyNode) == 2)
 			return heavyNode;
 
-		// DEBUG: Modified for real DP
 		if (getNodeStatus(getConnectionDestination(connect)) == 2
-		    && scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+		    && getConnectionWeight(connect) > maxWeight) {
 			nextNode = getConnectionDestination(connect);
-			maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect);
+			maxWeight = getConnectionWeight(connect);
 		}
 	}
 
@@ -953,7 +962,8 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 	}
 	// Propagate DP
 	while ((node = popNodeRecord())) {
-		//printf("Visiting node %li\n", (long) getNodeID(node));
+		//if (debug)
+		//    printf("Visiting node %li\n", (long) getNodeID(node));
 		setSingleNodeStatus(node, 2);
 		nodesToVisit--;
 
@@ -1551,6 +1561,8 @@ void computeTranscripts(Locus * loci, IDnum locusCount) {
 		setLocusStatus(locus, true);
 		getDegreeDistribution(locus, distribution);
 		configuration = hasPlausibleTranscripts(distribution);
+		// DEBUG
+		//debug = (index == 248);
 		addTranscriptToLocus(locus, configuration, scores);
 		setLocusStatus(locus, false);
 	}
