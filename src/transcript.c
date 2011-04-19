@@ -561,7 +561,7 @@ static IDnum abs_id(IDnum id)
 	return id > 0 ? id : -id;
 }
 
-static Coordinate getTotalCoverage(Node * node)
+static Coordinate getTotalCoverageOases(Node * node)
 {
 	Category cat;
 	Coordinate res = 0;
@@ -602,8 +602,8 @@ static Node *findHeaviestNonUsedNode(Locus * locus)
 
 	for (index = 0; index < locus->contigCount; index++) {
 		if (!getNodeStatus(locus->contigs[index])
-		    && getTotalCoverage(locus->contigs[index]) > maxCov) {
-			maxCov = getTotalCoverage(locus->contigs[index]);
+		    && getTotalCoverageOases(locus->contigs[index]) > maxCov) {
+			maxCov = getTotalCoverageOases(locus->contigs[index]);
 			nextNode = locus->contigs[index];
 		}
 	}
