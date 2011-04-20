@@ -2569,21 +2569,6 @@ void setMaxDivergence(double value)
 	MAXDIVERGENCE = value;
 }
 
-// 
-// What follows is a very ugly patch which will have to be normalized with the Velvet API
-// My sincere apologies
-//
-static Coordinate getTotalCoverage(Node * node)
-{
-	Category cat;
-	Coordinate coverage = 0;
-
-	for (cat = 0; cat < CATEGORIES; cat++)
-		coverage += getVirtualCoverage(node, cat);
-
-	return coverage;
-}
-
 static void exportLongNodeSequence(FILE * outfile, Node * node, Graph * graph) {
 	TightString *tString;
 	Coordinate position;
