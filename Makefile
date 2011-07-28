@@ -11,19 +11,47 @@ ifdef BIGASSEMBLY
 override DEF := $(DEF) -D BIGASSEMBLY
 endif 	
 
+ifdef VBIGASSEMBLY
+override DEF := $(DEF) -D BIGASSEMBLY -D VBIGASSEMBLY
+endif 	
+
 ifdef LONGSEQUENCES
 override DEF := $(DEF) -D LONGSEQUENCES
 endif 	
 
+ifdef OPENMP
+override CFLAGS := $(CFLAGS) -fopenmp
+endif
+
+# Per library coverage
+ifdef SINGLE_COV_CAT
+override DEF := $(DEF) -D SINGLE_COV_CAT
+endif
+
+default: oases
+
+ifdef BUNDLEDZLIB
+Z_LIB_DIR=third-party/zlib-1.2.3
+Z_LIB_FILES=$(Z_LIB_DIR)/*.o
+override DEF := $(DEF) -D BUNDLEDZLIB
+
+zlib: 
+	cd $(Z_LIB_DIR); ./configure; make; rm minigzip.o; rm example.o
+
+clean-zlib:
+	cd $(Z_LIB_DIR) && make clean
+else
+Z_LIB_FILES=-lz
+
+zlib:
+clean-zlib:
+endif
 
 VELVET_DIR=../../velvet
 VELVET_SRC_DIR=$(VELVET_DIR)/src
 VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph allocArray
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
 VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
-
-Z_LIB_DIR=$(VELVET_DIR)/third-party/zlib-1.2.3
-Z_LIB_FILES=$(Z_LIB_DIR)/*.o
 
 # Mac OS users: uncomment the following lines
 # Z_LIB_FILES=
@@ -36,23 +64,21 @@ Z_LIB_FILES=$(Z_LIB_DIR)/*.o
 OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
-default : oases
-
 velvet :
-	cd $(VELVET_DIR) && make obj
+	cd $(VELVET_DIR) && $(MAKE) obj
 
 velvetdbg :
-	cd $(VELVET_DIR) && make obj/dbg
+	cd $(VELVET_DIR) && $(MAKE) obj/dbg
 
 velvet_de :
-	cd $(VELVET_DIR) && make obj_de
+	cd $(VELVET_DIR) && $(MAKE) obj_de
 
 velvetdbg_de :
-	cd $(VELVET_DIR) && make obj/dbg_de
+	cd $(VELVET_DIR) && $(MAKE) obj/dbg_de
 
 clean :
 	rm -f obj/*.o obj/dbg/*.o ./oases 
-	cd $(VELVET_DIR) && make clean
+	cd $(VELVET_DIR) && $(MAKE) clean
 
 cleanobj: 
 	rm -f obj/*.o obj/dbg/*.o 
