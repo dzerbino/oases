@@ -34,7 +34,7 @@ struct locus_st {
 void setUnreliableConnectionCutoff_oases(int val);
 
 Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
-			boolean * dubious, IDnum * lengths,
+			boolean * dubious, ShortLength * lengths,
 			IDnum * locusCount, boolean scaffolding);
 void computeTranscripts(Locus * loci, IDnum locusCount);
 void computeASEvents(Locus * loci, IDnum locusCount);

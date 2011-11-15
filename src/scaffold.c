@@ -664,7 +664,7 @@ static void projectFromShortRead(Node * node,
 				 IDnum * readPairs, Category * cats,
 				 ReadOccurence ** readNodes,
 				 IDnum * readNodeCounts,
-				 IDnum * lengths, boolean weight)
+				 ShortLength * lengths, boolean weight)
 {
 	IDnum index;
 	IDnum readIndex = getShortReadMarkerID(shortMarker);
@@ -714,7 +714,7 @@ static void projectFromLongRead(Node * node, PassageMarkerI marker,
 				IDnum * readPairs, Category * cats,
 				ReadOccurence ** readNodes,
 				IDnum * readNodeCounts,
-				IDnum * lengths, boolean weight)
+				ShortLength * lengths, boolean weight)
 {
 	IDnum index;
 	IDnum readIndex = getPassageMarkerSequenceID(marker);
@@ -762,7 +762,7 @@ static void projectFromNode(IDnum nodeID,
 			    IDnum * readNodeCounts,
 			    IDnum * readPairs, Category * cats,
 			    boolean * dubious,
-			    IDnum * lengths, boolean weight)
+			    ShortLength * lengths, boolean weight)
 {
 	IDnum index;
 	ShortReadMarker *nodeArray, *shortMarker;
@@ -802,7 +802,7 @@ static Connection **computeNodeToNodeMappings(ReadOccurence ** readNodes,
 					      IDnum * readPairs,
 					      Category * cats,
 					      boolean * dubious,
-					      IDnum * lengths,
+					      ShortLength * lengths,
 					      boolean weight)
 {
 	IDnum nodeID;
@@ -1318,7 +1318,7 @@ void transitiveReduction()
 }
 
 void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
-		   IDnum * lengths, boolean scaffolding)
+		   ShortLength * lengths, boolean scaffolding)
 {
 	IDnum *readPairs = reads->mateReads;
 	Category *cats = reads->categories;

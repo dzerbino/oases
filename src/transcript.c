@@ -519,7 +519,7 @@ static void simplifyLoci(Locus * loci, IDnum locusCount) {
 }
 
 Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
-			boolean * dubious, IDnum * lengths,
+			boolean * dubious, ShortLength * lengths,
 			IDnum * locusCount, boolean scaffolding)
 {
 	Locus *loci;

@@ -89,7 +89,7 @@ static Ticket **todo;
 static Ticket *done;
 static boolean *progressStatus;
 
-static IDnum *sequenceLengths;
+static ShortLength *sequenceLengths;
 static Category *sequenceCategories;
 
 //End of global variables;
@@ -2442,7 +2442,7 @@ static void tourBus(Node * startingPoint)
 	}
 }
 
-void correctGraph(Graph * argGraph, IDnum * argSequenceLengths, Category * argSequenceCategories)
+void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category * argSequenceCategories)
 {
 	IDnum nodes;
 	IDnum index;

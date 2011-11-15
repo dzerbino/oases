@@ -44,7 +44,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 22;
+static int OASES_UPDATE_NUMBER = 23;
 
 static void printUsage()
 {
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 	FILE *file;
 	int arg_index, arg_int;
 	char *arg;
-	IDnum *sequenceLengths = NULL;
+	ShortLength *sequenceLengths = NULL;
 	Category cat;
 	long long longlong_var;
 	short int short_var;
