@@ -23,9 +23,9 @@ Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
 
 void clipTips(Graph * graph);
 
-void clipTipsHard(Graph * graph);
+void clipTipsHard(Graph * graph, boolean conserveLong);
 
-void correctGraph(Graph * graph, IDnum * sequenceLengths, Category * sequenceCategories);
+void correctGraph(Graph * graph, ShortLength * sequenceLengths, Category * sequenceCategories, boolean conserveLong);
 
 // Clumsy and dirty patch
 boolean *removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(Graph * graph,
@@ -39,4 +39,5 @@ boolean *removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(Graph * graph
 void setMaxReadLength(int value);
 void setMaxGaps(int value);
 void setMaxDivergence(double value);
+void setEdgeMultiplicityCutoff(double value);
 #endif

@@ -42,9 +42,6 @@
 #define BLOCK_SIZE  100000
 #define LENGTHCUTOFF 50
 
-// DEBUG
-// boolean debug = false;
-
 typedef enum event_type {
 	mutually_exclusive_exons,
 	skipped_exon,
@@ -60,14 +57,6 @@ struct event_st {
 	Event *next;
 };
 
-struct transcript_st {
-	IDnum contigCount;
-	Node **contigs;
-	Coordinate *distances;
-	double confidence;
-	Transcript *next;
-};
-
 // Global params
 static Graph *graph = NULL;
 static IDnum maxtrans = 10;
@@ -80,6 +69,7 @@ static RecycleBin *eventMemory = NULL;
 
 // DEBUG
 static Node *heavyNode = NULL;
+static boolean debug = false;
 
 static NodeList *allocateNodeList()
 {
@@ -107,7 +97,7 @@ static NodeList *recordNode(Node * node)
 
 	markedNodes = nodeList;
 
-	//printf("Recording node %li\n", (long) getNodeID(node));
+	//velvetLog("Recording node %li\n", (long) getNodeID(node));
 
 	return nodeList;
 }
@@ -125,13 +115,13 @@ static Node *popNodeRecord()
 	if (markedNodes != NULL)
 		markedNodes->previous = NULL;
 
-	//printf("Popping record %li\n", (long) getNodeID(node));
+	//velvetLog("Popping record %li\n", (long) getNodeID(node));
 
 	deallocateNodeList(nodeList);
 	return node;
 }
 
-static Transcript *allocateTranscript()
+Transcript *allocateTranscript()
 {
 	if (transcriptMemory == NULL)
 		transcriptMemory =
@@ -217,7 +207,7 @@ static void extendComponentToNode(Node * node)
 static void extendComponentFromNode(Node * node)
 {
 	Connection *connect;
-	//printf("Extending from node %li\n", (long) getNodeID(node));
+	//velvetLog("Extending from node %li\n", (long) getNodeID(node));
 
 	for (connect = getConnection(node); connect;
 	     connect = getNextConnection(connect))
@@ -519,7 +509,7 @@ static void simplifyLoci(Locus * loci, IDnum locusCount) {
 }
 
 Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
-			boolean * dubious, IDnum * lengths,
+			boolean * dubious, ShortLength * lengths,
 			IDnum * locusCount, boolean scaffolding)
 {
 	Locus *loci;
@@ -531,7 +521,7 @@ Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 	puts("Extracting loci from connection graph...");
 
 	*locusCount = countConnectedComponents(graph);
-	printf("Counted %li mRNA loci\n", (long) *locusCount);
+	velvetLog("Counted %li mRNA loci\n", (long) *locusCount);
 
 	loci = extractConnectedComponents(*locusCount);
 	if (doubleStrandedGraph(graph))
@@ -539,6 +529,7 @@ Locus *extractGraphLoci(Graph * argGraph, ReadSet * reads,
 
 	transitiveReduction();
 	simplifyLoci(loci, *locusCount);
+
 	return loci;
 }
 
@@ -608,8 +599,8 @@ static Node *findHeaviestNonUsedNode(Locus * locus)
 		}
 	}
 
-	//if (debug)
-	//    printf("Next node will be %li\n", (long) getNodeID(nextNode));
+	if (debug)
+		velvetLog("Next node will be %li\n", (long) getNodeID(nextNode));
 
 	heavyNode = nextNode;
 	return nextNode;
@@ -618,24 +609,77 @@ static Node *findHeaviestNonUsedNode(Locus * locus)
 static double bestSuccessorWeight(Node * node, double * scores) {
 	Connection *connect;
 	double maxWeight = 0;
+	double edgeWeight = 0;
 
 	for (connect = getConnection(node); connect != NULL;
 	     connect = getNextConnection(connect)) {
 		if (getConnectionStatus(connect)
 		    && getNodeStatus(getTwinNode(getConnectionDestination(connect)))) {
-			if (scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+			if (heavyNode && getConnectionDestination(connect) == heavyNode) {
+				return 100000000 * getConnectionWeight(connect);
+			// DEBUG: modified for real DP
+			} else if (scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
 				maxWeight = scores[getNodeID(getTwinNode(getConnectionDestination(connect))) + nodeCount(graph)] + getConnectionWeight(connect);
+				edgeWeight = getConnectionWeight(connect);
 			}
 		}
 	}
 
-	return maxWeight;
+	//if (heavyNode && getTwinNode(node) == heavyNode)
+	//	edgeWeight *= 100000000;
+
+	return edgeWeight;
 }
 
-static void computeDPScore(Node * node, double *scores)
+static Node *chooseBestPredecessor(Node * node, double * scores)
+{
+	Node *nextNode = NULL;
+	double maxWeight = 0;
+	Connection *connect;
+
+	for (connect = getConnection(getTwinNode(node)); connect != NULL;
+	     connect = getNextConnection(connect)) {
+		if (!getConnectionStatus(connect))
+			continue;
+
+		if (heavyNode 
+		    && getConnectionDestination(connect) == heavyNode
+		    && getNodeStatus(heavyNode) == 2)
+			return heavyNode;
+
+		// DEBUG: Modified for real DP
+		if (getNodeStatus(getConnectionDestination(connect)) == 2
+		    && scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+			nextNode = getConnectionDestination(connect);
+			maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect);
+		}
+	}
+
+	return nextNode;
+}
+
+static boolean detectLoop(Node * start, Node * current, double * scores, IDnum maxlength)
+{
+	Node * node = chooseBestPredecessor(current, scores);
+
+	if (debug)
+	    velvetLog("Testing nodes %li -> %li for loop (%li, %li)\n", (long) getNodeID(current), (long) getNodeID(node), (long) getNodeID(start), (long) maxlength);
+
+	if (node == NULL || maxlength == 0)
+		return false;
+	else if (node == getTwinNode(start)) {
+		if (debug)
+		    puts("LOOP");
+		return true;
+	} else
+		return detectLoop(start, node, scores, maxlength - 1);
+}
+
+static void computeDPScore(Node * node, double *scores, IDnum contigCount)
 {
 	Connection *connect;
 	double maxWeight = 0;
+	double edgeWeight = 0;
 	Node *predecessor = NULL;
 
 	for (connect = getConnection(getTwinNode(node)); connect != NULL;
@@ -643,46 +687,42 @@ static void computeDPScore(Node * node, double *scores)
 		if (getConnectionStatus(connect)
 		    && getNodeStatus(getConnectionDestination(connect))) {
 			if (heavyNode && getConnectionDestination(connect) == heavyNode) {
-				maxWeight = getConnectionWeight(connect);
+				maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) * 100000000;
+				edgeWeight = getConnectionWeight(connect);
 				predecessor = getConnectionDestination(connect);
 				break;
-			} else if (getConnectionWeight(connect) > maxWeight) {
-				maxWeight = getConnectionWeight(connect);
+			} else if (scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect) > maxWeight) {
+				maxWeight = scores[getNodeID(getConnectionDestination(connect)) + nodeCount(graph)] + getConnectionWeight(connect);
+				edgeWeight = getConnectionWeight(connect);
 				predecessor = getConnectionDestination(connect);
 			}
 		}
 	}
 
 	if (predecessor == NULL) {
-		if (heavyNode && node == heavyNode)
-		    scores[getNodeID(node) + nodeCount(graph)] = 100000;
-		else
-		    scores[getNodeID(node) + nodeCount(graph)] = 0;
-
-		//if (debug)
-		//    printf("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
-		    return;
+	    if (heavyNode && node == heavyNode)
+		scores[getNodeID(node) + nodeCount(graph)] = 100000000;
+	    else
+		scores[getNodeID(node) + nodeCount(graph)] = 0;
+	    if (debug)
+		velvetLog("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
+	    return;
 	}
 
-	// Starting score
-	scores[getNodeID(node) + nodeCount(graph)] =
-	    scores[getNodeID(predecessor) + nodeCount(graph)];
+	if (heavyNode && node == heavyNode) 
+		scores[getNodeID(node) + nodeCount(graph)] =
+		    100000000 * edgeWeight + scores[getNodeID(predecessor) + nodeCount(graph)];
+	else if (getNodeStatus(getTwinNode(node)) == 2 && detectLoop(node, node, scores, contigCount)) {
+		if (getUniqueness(node))
+		    scores[getNodeID(node) + nodeCount(graph)] = 0;
+		else
+		    scores[getNodeID(node) + nodeCount(graph)] = 
+			    scores[getNodeID(predecessor) + nodeCount(graph)] - bestSuccessorWeight(node, scores);
+	} else 
+		scores[getNodeID(node) + nodeCount(graph)] = maxWeight;
 
-	// Additional Score
-        if (heavyNode && (node == heavyNode || predecessor == heavyNode)) 
-		scores[getNodeID(node) + nodeCount(graph)] +=
-		    100000 * maxWeight;
-	else
-		scores[getNodeID(node) + nodeCount(graph)] +=
-		    maxWeight;
-
-	// Penalty for backtracking
-	if (getNodeStatus(getTwinNode(node)) == 2)
-		scores[getNodeID(node) + nodeCount(graph)] -=
-		    bestSuccessorWeight(node, scores);
-
-	//if (debug)
-	//    printf("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
+	if (debug)
+	    velvetLog("Score: %li -> %f\n", (long) getNodeID(node), scores[getNodeID(node) + nodeCount(graph)]);
 }
 
 static void propagateDP(Node * node)
@@ -805,7 +845,7 @@ static boolean forcePossibleAlternativeDPStartFromNode(Node * node, Locus * locu
 				if (getNodeStatus(getConnectionDestination(connect2)))
 					setConnectionStatus(connect2, false);
 			simplifyFromNode(node, locus);
-			//printf("Forced new start %li\n",(long)  getNodeID(node));
+			//velvetLog("Forced new start %li\n",(long)  getNodeID(node));
 			return true;
 		}
 	}
@@ -837,32 +877,6 @@ static boolean createAlternativeDPStarts(Locus * locus)
 	return false;
 }
 
-static Node *chooseBestPredecessor(Node * node, double * scores)
-{
-	Node *nextNode = NULL;
-	double maxWeight = 0;
-	Connection *connect;
-
-	for (connect = getConnection(getTwinNode(node)); connect != NULL;
-	     connect = getNextConnection(connect)) {
-		if (!getConnectionStatus(connect))
-			continue;
-
-		if (heavyNode 
-		    && getConnectionDestination(connect) == heavyNode
-		    && getNodeStatus(heavyNode) == 2)
-			return heavyNode;
-
-		if (getNodeStatus(getConnectionDestination(connect)) == 2
-		    && getConnectionWeight(connect) > maxWeight) {
-			nextNode = getConnectionDestination(connect);
-			maxWeight = getConnectionWeight(connect);
-		}
-	}
-
-	return nextNode;
-}
-
 static IDnum extractMajorityPath(Node * maxNode, double * scores)
 {
 	Node *node = maxNode;
@@ -872,15 +886,19 @@ static IDnum extractMajorityPath(Node * maxNode, double * scores)
 	setSingleNodeStatus(node, 1);
 
 	while (getReverseMarkedConnection(node)) {
-		//printf("Back tracking through node %li\n", (signed long) getNodeID(node));
+		if (debug)
+		    velvetLog("Back tracking through node %li\n", (signed long) getNodeID(node));
 		node = chooseBestPredecessor(node, scores);
 		if (node == NULL)
 			break;
 		recordNode(node);
 		setSingleNodeStatus(node, 1);
 		nodesInList++;
+		if (scores[getNodeID(node) + nodeCount(graph)] == 0)
+			break;
 	}
-	//printf("Arrived in %li\n", (long) getNodeID(node));
+	if (debug)
+	    velvetLog("Arrived in %li\n", (long) getNodeID(node));
 
 	return nodesInList;
 }
@@ -895,13 +913,13 @@ static IDnum extractLinearPath(Node * maxNode)
 	setNodeStatus(node, false);
 
 	while ((connect = getReverseActiveConnection(node))) {
-		//printf("Back tracking through node %li\n", (signed long) getNodeID(node));
+		//velvetLog("Back tracking through node %li\n", (signed long) getNodeID(node));
 		node = getConnectionDestination(connect);
 		recordNode(node);
 		setNodeStatus(node, false);
 		nodesInList++;
 	}
-	//printf("Arrived in %li\n", (long) getNodeID(node));
+	//velvetLog("Arrived in %li\n", (long) getNodeID(node));
 
 	return nodesInList;
 }
@@ -962,12 +980,11 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 	}
 	// Propagate DP
 	while ((node = popNodeRecord())) {
-		//if (debug)
-		//    printf("Visiting node %li\n", (long) getNodeID(node));
+		//velvetLog("Visiting node %li\n", (long) getNodeID(node));
 		setSingleNodeStatus(node, 2);
 		nodesToVisit--;
 
-		computeDPScore(node, scores);
+		computeDPScore(node, scores, locus->contigCount);
 		if (scores[getNodeID(node) + nodeCount(graph)] > overallMaxScore
 		    && (!heavyNode || node != getTwinNode(heavyNode))) {
 			overallMaxScore = scores[getNodeID(node) + nodeCount(graph)];
@@ -1012,7 +1029,7 @@ static IDnum explainedContigs(Locus * locus)
 		}
 	}
 
-	//printf("%li nodes explained out of %li\n", (long) counter, (long) locus->contigCount);
+	//velvetLog("%li nodes explained out of %li\n", (long) counter, (long) locus->contigCount);
 
 	return counter;
 }
@@ -1263,12 +1280,13 @@ static void exportLocusTranscripts(Locus * locus, IDnum locusID,
 			exportTranscript(transcript, locusID, index++, transcriptCount, outfile);
 }
 
-void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength)
+void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength, Graph * argGraph)
 {
 	FILE *outfile = fopen(filename, "w");
 	IDnum index;
+	graph = argGraph;
 
-	printf("Exporting transcripts to %s\n", filename);
+	velvetLog("Exporting transcripts to %s\n", filename);
 
 	for (index = 0; index < locusCount; index++)
 		exportLocusTranscripts(&(loci[index]), index, outfile, minTransLength);
@@ -1557,12 +1575,16 @@ void computeTranscripts(Locus * loci, IDnum locusCount) {
 	prepareGraphForLocalCorrections2(graph);
 
 	for (index = 0; index < locusCount; index++) {
+		// DEBUG 
+		debug = false; 
 		locus = &(loci[index]);
 		setLocusStatus(locus, true);
 		getDegreeDistribution(locus, distribution);
 		configuration = hasPlausibleTranscripts(distribution);
 		// DEBUG
-		//debug = (index == 248);
+		if (debug)
+			exportLocusGraph(stdout, index, loci);
+		setLocusStatus(locus, true);
 		addTranscriptToLocus(locus, configuration, scores);
 		setLocusStatus(locus, false);
 	}
@@ -1907,7 +1929,7 @@ void exportASEvents(Locus * loci, IDnum locusCount, char *filename)
 	IDnum index;
 
 	if (outfile)
-		printf("Exporting AS events to %s\n", filename);
+		velvetLog("Exporting AS events to %s\n", filename);
 	else
 		exitErrorf(EXIT_FAILURE, true, "Could not open %s",
 			   filename);
@@ -1984,7 +2006,7 @@ void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordina
 	IDnum index;
 
 	if (outfile)
-		printf("Exporting transcript contigs to %s\n", filename);
+		velvetLog("Exporting transcript contigs to %s\n", filename);
 	else
 		exitErrorf(EXIT_FAILURE, true, "Could not open %s",
 			   filename);
@@ -2083,7 +2105,7 @@ ReadSet *importEmptyReadSet(char *filename, Coordinate ** lengthsPtr,
 	Coordinate bpCount = 0;
 
 	if (file != NULL)
-		printf("Reading read set file %s;\n", filename);
+		velvetLog("Reading read set file %s;\n", filename);
 	else
 		exitErrorf(EXIT_FAILURE, true, "Could not open %s",
 			   filename);
@@ -2096,7 +2118,7 @@ ReadSet *importEmptyReadSet(char *filename, Coordinate ** lengthsPtr,
 		if (line[0] == '>')
 			sequenceCount++;
 	fclose(file);
-	printf("%d sequences found\n", sequenceCount);
+	velvetLog("%d sequences found\n", sequenceCount);
 
 	reads->readCount = sequenceCount;
 
@@ -2529,7 +2551,7 @@ void exportAMOSTranscripts(Graph * graph,
 
 	strcpy(filename, directory);
 	strcat(filename, "/oases_asm.afg");
-	printf("Writing into AMOS file %s...\n", filename);
+	velvetLog("Writing into AMOS file %s...\n", filename);
 	outfile = fopen(filename, "w");
 
 	if (outfile == NULL)
@@ -2642,7 +2664,7 @@ void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, R
 	strcat(outFilename, "/UnusedReads.fa");
 	outfile = fopen(outFilename, "w");
 
-	printf("Printing unused reads into %s\n", outFilename);
+	velvetLog("Printing unused reads into %s\n", outFilename);
 
 	resetNodeStatus(graph);
 
@@ -2911,7 +2933,7 @@ void exportTranscriptMappings(Locus * loci, IDnum locusCount,
 
 	strcpy(filename, directory);
 	strcat(filename, "/transcript-alignments.psa");
-	printf("Writing into pseudo-alignment file %s...\n", filename);
+	velvetLog("Writing into pseudo-alignment file %s...\n", filename);
 	outfile = fopen(filename, "w");
 
 	if (referenceCount == 0)	
@@ -2925,10 +2947,10 @@ void exportTranscriptMappings(Locus * loci, IDnum locusCount,
 	strcat(filename, "/transcript-alignments.psa");
 	outfile = fopen(filename, "w");
 	if (outfile == NULL) {
-		printf("Could not write into %s, sorry\n", filename);
+		velvetLog("Could not write into %s, sorry\n", filename);
 		return;
 	} else {
-		printf("Writing contigs into %s...\n", filename);
+		velvetLog("Writing contigs into %s...\n", filename);
 	}
 
 	for (locusIndex = 0; locusIndex < locusCount; locusIndex++) 
@@ -2938,4 +2960,28 @@ void exportTranscriptMappings(Locus * loci, IDnum locusCount,
 		free(refCoords[refIndex].name);
 	free(refCoords);
 	fclose(outfile);
+}
+
+void detachShortReads(ReadSet * reads, int wordLength)
+{
+	IDnum index;
+	IDnum pairID;
+	IDnum sequenceCount = reads->readCount;
+	IDnum *mateReads = reads->mateReads;
+
+	if (mateReads == NULL)
+		return;
+
+	for (index = 0; index < sequenceCount; index++) {
+		if (getLength(getTightStringInArray(reads->tSequences, index)) >= wordLength || reads->categories[index] % 2 == 0 )
+			continue;
+
+		if (isSecondInPair(reads, index))
+		    pairID = index - 1;
+		else
+		    pairID = index + 1;
+
+		reads->categories[index] = (reads->categories[index] / 2) * 2;
+		reads->categories[pairID] = (reads->categories[pairID] / 2) * 2;
+	}
 }

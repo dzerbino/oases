@@ -22,7 +22,7 @@
 typedef struct connection_st Connection;
 
 void buildScaffold(Graph * graph, ReadSet * reads, boolean * dubious,
-		   IDnum * lengths, boolean scaffolding);
+		   ShortLength * lengths, boolean scaffolding);
 void transitiveReduction();
 
 Connection *getConnection(Node * node);
@@ -46,4 +46,5 @@ void scaffold_setDegreeCutoff(int val);
 
 void destroyConnection(Connection * connect, IDnum index);
 void cleanScaffoldMemory();
+void defineUniqueNodes(Graph * graph);
 #endif

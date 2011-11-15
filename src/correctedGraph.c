@@ -56,6 +56,7 @@ static int MAXREADLENGTH = 100;
 static int MAXNODELENGTH = 200;
 static double MAXDIVERGENCE = 0.2;
 static int MAXGAPS = 3;
+static double MULTIPLICITY_CUTOFF = 0.01;
 
 static Time *times;
 static Node **previous;
@@ -89,7 +90,7 @@ static Ticket **todo;
 static Ticket *done;
 static boolean *progressStatus;
 
-static IDnum *sequenceLengths;
+static ShortLength *sequenceLengths;
 static Category *sequenceCategories;
 
 //End of global variables;
@@ -2371,7 +2372,7 @@ void clipTips(Graph * graph)
 	printf("%d nodes left\n", nodeCount(graph));
 }
 
-void clipTipsHard(Graph * graph)
+void clipTipsHard(Graph * graph, boolean conserveLong)
 {
 	IDnum index;
 	Node *current, *twin;
@@ -2387,6 +2388,9 @@ void clipTipsHard(Graph * graph)
 			current = getNodeInGraph(graph, index);
 
 			if (current == NULL)
+				continue;
+
+			if (conserveLong && getMarker(current))
 				continue;
 
 			twin = getTwinNode(current);
@@ -2442,7 +2446,48 @@ static void tourBus(Node * startingPoint)
 	}
 }
 
-void correctGraph(Graph * argGraph, IDnum * argSequenceLengths, Category * argSequenceCategories)
+void setEdgeMultiplicityCutoff(double value) {
+	MULTIPLICITY_CUTOFF = value;
+}
+
+static boolean noLongReads(Arc * arc) {
+	Node * A = getOrigin(arc);
+	Node * B = getDestination(arc);
+	PassageMarkerI marker;
+
+	for (marker = getMarker(A); marker; marker = getNextInNode(marker))
+		if (getNode(getNextInSequence(marker)) == B)
+			return true;
+	return false;
+}
+
+static void removeLameNodeArcs(Node * node, Graph * graph, boolean conserveLong) {
+	Arc * arc;
+	IDnum totalArcCoverage = 0;
+
+	if (node == NULL)
+		return;
+
+	for (arc = getArc(node); arc; arc = getNextArc(arc))
+		totalArcCoverage += getMultiplicity(arc); 
+
+	for (arc = getArc(node); arc; arc = getNextArc(arc))
+		if (getMultiplicity(arc) < totalArcCoverage * MULTIPLICITY_CUTOFF && (!conserveLong || noLongReads(arc)))
+			destroyArc(arc, graph);
+}
+
+static void removeLameArcs(Graph * graph, boolean conserveLong) {
+	IDnum index;
+
+	velvetLog("Removing low coverage edges from the graph\n");
+
+	for (index = -nodeCount(graph); index <= nodeCount(graph); index++)
+		removeLameNodeArcs(getNodeInGraph(graph, index), graph, conserveLong);
+
+	concatenateGraph(graph);
+}
+
+void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category * argSequenceCategories, boolean conserveLong)
 {
 	IDnum nodes;
 	IDnum index;
@@ -2457,6 +2502,7 @@ void correctGraph(Graph * argGraph, IDnum * argSequenceLengths, Category * argSe
 
 	printf("Correcting graph with cutoff %f\n", MAXDIVERGENCE);
 
+	removeLameArcs(graph, conserveLong);
 	//clipTips(graph);
 	nodes = nodeCount(graph);
 
@@ -2501,7 +2547,8 @@ void correctGraph(Graph * argGraph, IDnum * argSequenceLengths, Category * argSe
 	deactivateArcLookupTable(graph);
 	concatenateGraph(graph);
 
-	clipTipsHard(graph);
+	clipTipsHard(graph, conserveLong);
+	removeLameArcs(graph, conserveLong);
 
 	//Deallocating globals
 	free(times);
@@ -2569,6 +2616,10 @@ void setMaxDivergence(double value)
 	MAXDIVERGENCE = value;
 }
 
+// 
+// What follows is a very ugly patch which will have to be normalized with the Velvet API
+// My sincere apologies
+//
 static void exportLongNodeSequence(FILE * outfile, Node * node, Graph * graph) {
 	TightString *tString;
 	Coordinate position;

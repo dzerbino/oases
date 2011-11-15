@@ -98,3 +98,9 @@ V 0.1.21
 V 0.1.22
 - POSIX compliant Makefile
 - Velvet compatible Makefile
+
+V 0.1.23
+- Variable sizes for sequence lengths
+- Heuristics to remove totally spurious connections
+- Explicit merge function
+- Some code cleanup
