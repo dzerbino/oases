@@ -1130,91 +1130,16 @@ void cleanLocusMemory(Locus * loci, IDnum locusCount)
 	cleanScaffoldMemory();
 }
 
-static void exportContigSequence(Node * node, FILE * outfile, int *column,
-				 int showKmer)
-{
-	char *string = expandNodeFragment(node, 0, getNodeLength(node),
-					  getWordLength(graph));
-	Coordinate start = 0;
-	char str[100];
-
-	if (getNodeLength(node) >= getWordLength(graph) - 1)
-		start = getWordLength(graph) - 1 - showKmer;
-
-	while (start < strlen(string)) {
-		if (getNodeLength(node) < getWordLength(graph) - 1)
-			strncpy(str, string + start, 60 - *column);
-		else
-			strncpy(str, string + start, 60 - *column);
-		str[60 - *column] = '\0';
-		fprintf(outfile, "%s", str);
-		*column += strlen(str);
-		if (*column >= 60) {
-			fprintf(outfile, "\n");
-			*column = 0;
-		}
-		start += strlen(str);
-	}
-
-	free(string);
-}
-
-static void exportGapSequence(Coordinate length, FILE * outfile,
-			      int *column)
-{
-	IDnum index;
-	Coordinate displayedLength = length;
-	
-	if (length <= 0)
-		return;
-
-	if (displayedLength < 10)
-		displayedLength = 10;
-
-	for (index = 0; index < displayedLength; index++) {
-		fprintf(outfile, "N");
-
-		if (++(*column) == 60) {
-			fprintf(outfile, "\n");
-			*column = 0;
-		}
-	}
-}
-
-static int getStartOfTranscript(Transcript * transcript) {
-	int index = 0; 
-	Coordinate totalLength = 0;
-	int showKmer = getWordLength(graph) - 1;
-
-	// Possible skipping of initial short nodes
-	while (index < transcript->contigCount && totalLength <= showKmer && getNodeLength(transcript->contigs[index]) < showKmer) {
-		totalLength += getNodeLength(transcript->contigs[index]);		
-		if (index < transcript->contigCount + 1) {
-			if (transcript->distances[index] < 10)
-				totalLength += 10;
-			else 
-				totalLength += transcript->distances[index];
-		}
-		index++;
-	}
-
-	if (index == transcript->contigCount || totalLength > showKmer)
-		return 0;
-	else 
-		return index;
-}
-
 static Coordinate getTranscriptLength(Transcript * transcript) {
-	IDnum index = getStartOfTranscript(transcript);
+	IDnum index;
 	Coordinate totalLength = 0;
 
 	if (transcript->contigCount == 0)
 		return 0;
 
-	if (getNodeLength(transcript->contigs[index]) >= getWordLength(graph) - 1) 
-		totalLength = getWordLength(graph) - 1;
+	totalLength = getWordLength(graph) - 1;
 
-	for (; index < transcript->contigCount; index++) {
+	for (index = 0; index < transcript->contigCount; index++) {
 		totalLength += getNodeLength(transcript->contigs[index]);
 		if (index < transcript->contigCount - 1) {
 			if (transcript->distances[index] < getWordLength(graph) && getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
@@ -1230,36 +1155,111 @@ static Coordinate getTranscriptLength(Transcript * transcript) {
 	return totalLength;
 }
 
+static char revComp(char base) {
+	if (base == 'A')
+		return 'T';
+	if (base == 'T')
+		return 'A';
+	if (base == 'G')
+		return 'C';
+	if (base == 'C')
+		return 'G';
+	return 'N';
+}
+
+static char * nSequence(Coordinate length) {
+	char * sequence = callocOrExit(length + 1, char);
+	Coordinate position;
+
+	for (position = 0; position < length; position++) 
+		sequence[position] = 'N';
+	sequence[length] = '\0';
+
+	return sequence;
+}
+
+static void printFastA(FILE * outfile, char * sequence) {
+	Coordinate position;
+	size_t length = strlen(sequence);
+	char str[100];
+
+	for (position = 0; position < length; position += strlen(str)) {
+		strncpy(str, sequence + position, 60);
+		str[60] = '\0';
+		fprintf(outfile, "%s\n", str);
+	}
+}
+
+static void addLongNodeToSequence(char * sequence, Node * node, Coordinate offset) {
+	Coordinate position;
+	char *string = expandNodeFragment(node, 0, getNodeLength(node),
+					  getWordLength(graph));
+	int wordShift = getWordLength(graph) - 1;
+
+	for (position = 0; position < strlen(string); position++) 
+	    if (sequence[offset + position - wordShift] == 'N')
+		sequence[offset + position - wordShift] = string[position]; 
+	free(string);
+}
+
+static void addShortNodeToSequence(char * sequence, Node * node, Coordinate offset) {
+	Coordinate position;
+	char *string = expandNodeFragment(node, 0, getNodeLength(node),
+					  getWordLength(graph));
+	int wordShift = getWordLength(graph) - 1;
+
+	for (position = 0; position < strlen(string); position++) 
+	    if (sequence[offset + position] == 'N')
+		sequence[offset + position] = string[position]; 
+
+	free(string);
+	string = expandNodeFragment(getTwinNode(node), 0, getNodeLength(node),
+				      getWordLength(graph));
+
+	for (position = 0; position < strlen(string); position++) 
+	    if (sequence[offset - wordShift + getNodeLength(node) - 1 - position] == 'N')
+		sequence[offset - wordShift + getNodeLength(node) - 1 - position] = revComp(string[position]); 
+	free(string);
+}
+
+static void addNodeToSequence(char * sequence, Node * node, Coordinate offset) {
+	int wordShift = getWordLength(graph) - 1;
+
+	// Add sequence
+	if (getNodeLength(node) >= wordShift) 
+		addLongNodeToSequence(sequence, node, offset);
+	else
+		addShortNodeToSequence(sequence, node, offset);
+}
+
 static void exportTranscript(Transcript * transcript, IDnum locusID,
 			     IDnum transID, IDnum transcriptCount, FILE * outfile)
 {
 	IDnum index;
-	int column = 0;
-	int showKmer = getWordLength(graph) - 1;
+	Coordinate offset = getWordLength(graph) - 1;
+	char * sequence = nSequence(getTranscriptLength(transcript)); 
 
-	// Header
-	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
-		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) getTranscriptLength(transcript));
+	// Extract sequence
+	for (index = 0; index < transcript->contigCount; index++) {
+	    addNodeToSequence(sequence, transcript->contigs[index], offset);
 
-	// Sequence
-	for (index = getStartOfTranscript(transcript); index < transcript->contigCount; index++) {
-		exportContigSequence(transcript->contigs[index], outfile,
-				     &column, showKmer);
-		if (index < transcript->contigCount - 1) {
-			if (getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
-				if (transcript->distances[index] > getWordLength(graph) - 1)
-					showKmer = getWordLength(graph) - 1;
-				else
-					showKmer = transcript->distances[index];
-			} else
-				showKmer = 0;
-
-			exportGapSequence(transcript->distances[index] - showKmer, outfile, &column);
-		}
+	    // Increment offset
+	    offset += getNodeLength(transcript->contigs[index]);
+	    if (index < transcript->contigCount - 1)
+		    offset += transcript->distances[index];
 	}
 
-	if (column > 0)
-		fprintf(outfile, "\n");
+	// Count initial N's
+	for (offset = 0; offset < strlen(sequence); offset++)
+		if (sequence[offset] != 'N')
+			break;
+	
+	// Print
+	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) strlen(sequence) - offset);
+	printFastA(outfile, sequence + offset);
+
+	free(sequence);
 }
 
 static void exportLocusTranscripts(Locus * locus, IDnum locusID,
@@ -1575,15 +1575,10 @@ void computeTranscripts(Locus * loci, IDnum locusCount) {
 	prepareGraphForLocalCorrections2(graph);
 
 	for (index = 0; index < locusCount; index++) {
-		// DEBUG 
-		debug = false; 
 		locus = &(loci[index]);
 		setLocusStatus(locus, true);
 		getDegreeDistribution(locus, distribution);
 		configuration = hasPlausibleTranscripts(distribution);
-		// DEBUG
-		if (debug)
-			exportLocusGraph(stdout, index, loci);
 		setLocusStatus(locus, true);
 		addTranscriptToLocus(locus, configuration, scores);
 		setLocusStatus(locus, false);
@@ -1943,7 +1938,7 @@ void exportASEvents(Locus * loci, IDnum locusCount, char *filename)
 static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 				    IDnum transID, IDnum transcriptCount, FILE * outfile)
 {
-	IDnum index = getStartOfTranscript(transcript);
+	IDnum index;
 	Coordinate totalLength = 0;
 
 	if (transcript->contigCount == 0)
@@ -1953,11 +1948,10 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
 		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) getTranscriptLength(transcript));
 
-	if (getNodeLength(transcript->contigs[index]) >= getWordLength(graph) - 1) 
-		totalLength = getWordLength(graph) - 1;
+	totalLength = getWordLength(graph) - 1;
 
 	// Sequence
-	for (index = getStartOfTranscript(transcript); index < transcript->contigCount; index++) {
+	for (index = 0; index < transcript->contigCount; index++) {
 		totalLength += getNodeLength(transcript->contigs[index]);
 		fprintf(outfile, "%li:%lli",
 			(long) getNodeID(transcript->contigs[index]),

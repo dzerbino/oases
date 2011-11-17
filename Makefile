@@ -61,24 +61,26 @@ VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 # Sparc/Solaris users: uncomment the following line
 # CFLAGS = -Wall -m64
 
-OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o
+OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o obj/filterTranscripts.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
+default : oases
+
 velvet :
-	cd $(VELVET_DIR) && $(MAKE) obj
+	cd $(VELVET_DIR) && make obj
 
 velvetdbg :
-	cd $(VELVET_DIR) && $(MAKE) obj/dbg
+	cd $(VELVET_DIR) && make obj/dbg
 
 velvet_de :
-	cd $(VELVET_DIR) && $(MAKE) obj_de
+	cd $(VELVET_DIR) && make obj_de
 
 velvetdbg_de :
-	cd $(VELVET_DIR) && $(MAKE) obj/dbg_de
+	cd $(VELVET_DIR) && make obj/dbg_de
 
 clean :
 	rm -f obj/*.o obj/dbg/*.o ./oases 
-	cd $(VELVET_DIR) && $(MAKE) clean
+	cd $(VELVET_DIR) && make clean
 
 cleanobj: 
 	rm -f obj/*.o obj/dbg/*.o 
