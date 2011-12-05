@@ -104,3 +104,7 @@ V 0.1.23
 - Heuristics to remove totally spurious connections
 - Explicit merge function
 - Some code cleanup
+
+V 0.2.01
+- Merge option
+- Pipeline script
