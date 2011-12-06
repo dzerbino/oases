@@ -41,10 +41,11 @@
 
 // Oases specific stuff 
 #include "transcript.h"
+#include "filterTranscripts.h"
 
 static int OASES_VERSION_NUMBER = 0;
-static int OASES_RELEASE_NUMBER = 1;
-static int OASES_UPDATE_NUMBER = 23;
+static int OASES_RELEASE_NUMBER = 2;
+static int OASES_UPDATE_NUMBER = 1;
 
 static void printUsage()
 {
@@ -67,8 +68,10 @@ static void printUsage()
 	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 4)");
 	puts("\t-min_trans_lgth <integer>\t: Minimum length of output transcripts (default: hash-length)");
 	puts("\t-paired_cutoff <floating-point>\t: minimum ratio allowed between the numbers of observed and estimated connecting read pairs");
-	puts("\t-conserveLong <yes|no>\t\t:Preserve contigs mapping onto long sequences to be preserved from coverage cutoff (default: no)");
 	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.1)");
+	puts("\t-merge <yes|no>\t\t:Preserve contigs mapping onto long sequences to be preserved from coverage cutoff (default: no)");
+	puts("\t-edgeFractionCutoff <floating-point>\t: Remove edges which represent less than that fraction of a nodes outgoing flow");
+	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.01)");
 	puts("\t-scaffolding <yes|no>\t\t:Allow gaps in transcripts (default: yes)");
 	puts("\t-degree_cutoff <integer>\t: Maximum allowed degree on either end of a contigg to consider it 'unique' (default: 3)");
 	puts("");
@@ -89,6 +92,7 @@ int main(int argc, char **argv)
 	Coordinate std_dev_long = -1;
 	FILE *file;
 	int arg_index, arg_int;
+	double arg_double;
 	char *arg;
 	ShortLength *sequenceLengths = NULL;
 	Category cat;
@@ -104,7 +108,7 @@ int main(int argc, char **argv)
 	boolean unusedReads = false;
 	boolean exportAssembly = false;
 	boolean scaffolding = false;
-	boolean conserveLong = false;
+	boolean merge = false;
 	boolean exportAlignments = false;
 
 	setProgramName("oases");
@@ -172,12 +176,15 @@ int main(int argc, char **argv)
 		} else if (strcmp(arg, "-scaffolding") == 0) {
 			scaffolding =
 			    (strcmp(argv[arg_index], "yes") == 0);
-		} else if (strcmp(arg, "-conserveLong") == 0) {
-			conserveLong =
+		} else if (strcmp(arg, "-merge") == 0) {
+			merge =
 			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-min_pair_count") == 0) {
 			sscanf(argv[arg_index], "%i", &arg_int);
 			setUnreliableConnectionCutoff_oases(arg_int);
+		} else if (strcmp(arg, "-edgeFractionCutoff") == 0) {
+			sscanf(argv[arg_index], "%lf", &arg_double);
+			setEdgeMultiplicityCutoff(arg_double);
 		} else if (strcmp(arg, "--help") == 0) {
 			printUsage();
 			return 0;
@@ -263,18 +270,11 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+    
 	sequenceLengths =
 	    getSequenceLengths(reads, getWordLength(graph));
 
-	if (!conserveLong)
-	    dubious =
-		removeLowCoverageNodesAndDenounceDubiousReads(graph,
-							      coverageCutoff,
-							      reads,
-							      false,
-							      0,
-							      "nothing");
-	else 
+	if (merge)
 	    dubious =
 		removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(graph,
 							      coverageCutoff,
@@ -282,32 +282,17 @@ int main(int argc, char **argv)
 							      false,
 							      0,
 							      "nothing");
-	clipTipsHard(graph);
+	else
+	    dubious =
+		removeLowCoverageNodesAndDenounceDubiousReads(graph,
+							      coverageCutoff,
+							      reads,
+							      false,
+							      0,
+							      "nothing");
 
-	correctGraph(graph, sequenceLengths, reads->categories);
-
-	//exportLongNodeSequences("toto.fa", graph, 50);
-
-	// Set insert lengths and their standard deviations
-	createReadPairingArray(reads);
-	for (cat = 0; cat < CATEGORIES; cat++) {
-		if (insertLength[cat] > -1 && std_dev[cat] < 0)
-			std_dev[cat] = insertLength[cat] / 10;
-		setInsertLengths(graph, cat,
-				 insertLength[cat], std_dev[cat]);
-		//if (insertLength[cat] > -1) {
-		//	pairUpReads(reads, 2 * cat + 1);
-		//}
-
-		detachDubiousReads(reads, dubious);
-	}
-
-	if (insertLengthLong > -1 && std_dev_long < 0)
-		std_dev_long = insertLengthLong / 10;
-	setInsertLengths(graph, CATEGORIES, insertLengthLong,
-			 std_dev_long);
-	//if (insertLengthLong > -1)
-	//	pairUpReads(reads, 2 * CATEGORIES + 1);
+	clipTipsHard(graph, merge);
+	correctGraph(graph, sequenceLengths, reads->categories, merge);
 
 	strcpy(graphFilename, directory);
 	strcat(graphFilename, "/stats.txt");
@@ -317,20 +302,41 @@ int main(int argc, char **argv)
 	strcat(graphFilename, "/LastGraph");
 	exportGraph(graphFilename, graph, reads->tSequences);
 
-	loci =
-	    extractGraphLoci(graph, reads, dubious, sequenceLengths, &locusCount, scaffolding);
+	if (!merge) {
+	    // Set insert lengths and their standard deviations
+	    createReadPairingArray(reads);
+	    for (cat = 0; cat < CATEGORIES; cat++) {
+		    if (insertLength[cat] > -1 && std_dev[cat] < 0)
+			    std_dev[cat] = insertLength[cat] / 10;
+		    setInsertLengths(graph, cat,
+				     insertLength[cat], std_dev[cat]);
 
-	//minTransLength -= (getWordLength(graph) - 1);
+		    detachDubiousReads(reads, dubious);
+		    detachShortReads(reads, getWordLength(graph));
+	    }
 
-	computeTranscripts(loci, locusCount);
+	    if (insertLengthLong > -1 && std_dev_long < 0)
+		    std_dev_long = insertLengthLong / 10;
+	    setInsertLengths(graph, CATEGORIES, insertLengthLong,
+			     std_dev_long);
+
+	    loci =
+		extractGraphLoci(graph, reads, dubious, sequenceLengths, &locusCount, scaffolding);
+	    computeTranscripts(loci, locusCount);
+	} else {
+	    removeRedundantTranscripts(graph);
+	    loci = reextractGraphLoci(graph, &locusCount);
+	    recomputeTranscripts(&loci, &locusCount);
+	}
+
 	strcpy(transcriptFilename, directory);
 	strcat(transcriptFilename, "/transcripts.fa");
-	exportTranscripts(loci, locusCount, transcriptFilename, minTransLength);
+	exportTranscripts(loci, locusCount, transcriptFilename, minTransLength, graph);
 	strcpy(transcriptFilename, directory);
 	strcat(transcriptFilename,
 	       "/contig-ordering.txt");
 	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength);
-	printf("Finished heuristic approach, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
+	velvetLog("Finished extracting transcripts, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
 
 	if (unusedReads) 
 		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);
@@ -343,14 +349,8 @@ int main(int argc, char **argv)
 
 	cleanTranscriptMemory(loci, locusCount);
 
-	removeIndirectConnections();
-
-#ifndef COLOR
-	computeASEvents(loci, locusCount);
-	strcpy(eventFilename, directory);
-	strcat(eventFilename, "/splicing_events.txt");
-	exportASEvents(loci, locusCount, eventFilename);
-#endif
+	if (!merge)
+		removeIndirectConnections();
 
 	cleanLocusMemory(loci, locusCount);
 	destroyGraph(graph);

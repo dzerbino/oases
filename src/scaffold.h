@@ -46,4 +46,5 @@ void scaffold_setDegreeCutoff(int val);
 
 void destroyConnection(Connection * connect, IDnum index);
 void cleanScaffoldMemory();
+void defineUniqueNodes(Graph * graph);
 #endif

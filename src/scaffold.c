@@ -1012,7 +1012,7 @@ static void defineUniqueness(Node * node)
 		setUniqueness(node, false);
 }
 
-static void defineUniqueNodes()
+void defineUniqueNodes(Graph * graph)
 {
 	IDnum index;
 
@@ -1328,7 +1328,7 @@ void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
 
 	graph = argGraph;
 
-	defineUniqueNodes();
+	defineUniqueNodes(graph);
 	readNodeCounts = computeReadToNodeCounts();
 	readNodes = computeReadToNodeMappings(readNodeCounts);
 	scaffold =

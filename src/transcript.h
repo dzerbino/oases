@@ -31,6 +31,14 @@ struct locus_st {
 	Event *event;
 };
 
+struct transcript_st {
+	IDnum contigCount;
+	Node **contigs;
+	Coordinate *distances;
+	double confidence;
+	Transcript *next;
+};
+
 void setUnreliableConnectionCutoff_oases(int val);
 
 Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
@@ -39,7 +47,7 @@ Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
 void computeTranscripts(Locus * loci, IDnum locusCount);
 void computeASEvents(Locus * loci, IDnum locusCount);
 
-void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength);
+void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength, Graph * graph);
 void exportASEvents(Locus * loci, IDnum locusCount, char *filename);
 void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength);
 void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory);
@@ -51,7 +59,7 @@ void removeIndirectConnections();
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount);
 void cleanLocusMemory(Locus * loci, IDnum locusCount);
 
-void clipTipsHard(Graph * graph);
+void clipTipsHard(Graph * graph, boolean conserveLong);
 
 ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
 			    int wordLength);
@@ -63,4 +71,7 @@ void setPairedThreshold(double pairedThreshold);
 void exportLocusGraph(FILE * outfile, IDnum index, Locus * loci);
 
 void setDegreeCutoff(int val);
+
+void detachShortReads(ReadSet * reads, int wordLength);
+Transcript * allocateTranscript();
 #endif
