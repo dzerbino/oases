@@ -5,4 +5,4 @@ default:
 	mv *.pdf ../../
 
 clean:
-	rm *.aux *.toc *.log
+	rm *.aux *.toc *.log *.out
