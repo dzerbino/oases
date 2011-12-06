@@ -1,0 +1,277 @@
+\documentclass[12pt]{article}
+\usepackage{hyperref}
+\usepackage{color}
+\newcommand{\NOTE}{\textcolor{red}{\textbf{NOTE}}}
+\begin{document}
+
+\title{Oases Manual (version 0.2)}
+\author{Daniel R. Zerbino \& Marcel H. Schulz}
+\date{December 2, 2011}
+\maketitle
+\tableofcontents
+
+\newpage
+
+\textbf{Note:} If you are not familiar with using Velvet, read Velvet's manual first, as many references below will point to that document.
+
+\section{For impatient people}
+\begin{verbatim}
+> velveth directory 21,23 data/reads.fa
+> velvetg directory_21 -read_trkg yes
+> oases directory_21
+> ls directory_21
+
+> velvetg directory_23 -read_trkg yes
+> oases directory_23
+
+> velveth merge 23 -long directory*/transcripts.fa
+> velvetg merge -read_trkg yes -conserveLong yes
+> oases merge -merge
+\end{verbatim}
+
+Or use the python script oases\_pipeline.py.
+
+\begin{verbatim}
+> python oases_pipeline.py -m 21 -M 23 data/reads.fa
+\end{verbatim}
+
+\section{Installing Oases} 
+
+\subsection{Getting the code}
+
+The recommended installation process for Oases is \emph{git} (www.git.org). After installing \emph{git}, go into the directory of you choice and simply type:
+
+\begin{verbatim}
+git clone git://github.com/dzerbino/velvet.git
+git clone git://github.com/dzerbino/oases.git
+\end{verbatim}
+
+This will create two directories, \emph{velvet/} and \emph{oases/}
+
+\subsection{Compiling the code}
+
+After compiling Velvet, enter the Oases directory and type:
+
+\begin{verbatim}
+make
+\end{verbatim}
+
+If the Velvet source directory is not next to the Oases directory, or if it has a different name, you must indicate the location of this directory:
+
+\begin{verbatim}
+make 'VELVET_DIR=/path/to/velvet'
+\end{verbatim}
+
+Note that this must be an absolute path, without the $\tilde{}/$ shorthand.
+
+If you provided any compilation options when compiling Velvet, you must provide the same when compiling Oases, as in:
+
+\begin{verbatim}
+make 'MAXKMERLENGTH=92'
+\end{verbatim}
+
+This will produce an executable, $oases$, which you might want to place somewhere on your path for greater convenience.
+
+\section{Running Oases}
+
+To run Oases it is recommended to run an array of single-$k$ assemblies, for different values of $k$ (i.e. the hash length). These assemblies are then merged into a final assembly. 
+
+\subsection{Single-$k$ assemblies}
+
+Each single-$k$ assembly consists of a simple Velvet run, followed by an Oases run. As in Velvet, the hash length $k$ is an odd integer. Velveth is run normally and velvetg is run with only one option:
+
+\begin{verbatim}
+> velveth directory_k k reads.fa
+> velvetg directory_k -read_trkg yes
+\end{verbatim}
+
+If you have strand specific reads then you have to type:
+\begin{verbatim}
+> velveth directory_k k -strand_specific reads.fa
+\end{verbatim}
+
+Oases is then run on that directory:
+
+\begin{verbatim}
+> oases directory_$k
+\end{verbatim}
+
+\subsection{Oases options}
+
+\subsubsection{Oases help}
+
+In case of doubt, you can always print a help message by typing (interchangeably):
+
+\begin{verbatim}
+> oases
+> oases --help
+\end{verbatim}
+
+\subsubsection{Insert length}\label{insert}
+
+If using paired-end reads, Oases needs to know the expected insert length (it cannot be estimated reliably automatically). The syntax to provide insert lengths is identical to that used in Velvet:
+
+\begin{verbatim}
+oases directory -ins_length 500
+\end{verbatim}
+
+\subsubsection{Coverage cutoff}
+
+Just like Velvet, low coverage contigs are removed from the assembly. Because genes span all the spectrum of expression levels and therefore coverage depths, setting the coverage cutoff does not depend on an expected or median coverage. Instead, the coverage cutoff is set to remove all the contigs whose coverage is so low that \emph{de novo} assembly would be impossible anyways (by default it is set at $3x$). If you wish to set it to another value, simply use the Velvet-like option:
+
+\begin{verbatim}
+oases directory -cov_cutoff 5
+\end{verbatim}
+
+\subsubsection{Edge fraction cutoff}
+
+To allow more efficient error removal at high coverage, Oases integrates a dynamic correction method: if at a given node, an edge's coverage represents less than a given percentage of the sum of coverages of edges coming out of that node, it is removed.
+
+By default this percentage is 10\% but you can set it manually:
+
+\begin{verbatim}
+oases directory -edgeFractionCutoff 0.01
+\end{verbatim}
+
+\subsubsection{Scaffold filtering}
+
+By default the distance estimate between two long contigs is discarded as unreliable if it is supported by less than a given number (by default 4) or read-pairs or bridging reads. If you wish to change this cutoff:
+
+\begin{verbatim}
+oases directory -min_pair_count 5
+\end{verbatim}
+
+\subsubsection{Filtering the output}\label{filtering}
+
+By setting the minimum transfrag length (by default 100bp), the user can control what is being output in the results files:
+
+\begin{verbatim}
+> oases directory -min_trans_lgth 200
+\end{verbatim}
+
+\subsection{Assembly merging}
+
+After running the previous process for different values of $k$ it is necessary to merge the results of all these assemblies (contained in \emph{transcripts.fa} files) into a single, non redundant assembly. To realize this merge, it is necessary to choose a value of $K$. Experiments have shown that $K=27$ works nicely for most organisms. Higher values for $K$ should be used if problems with missassemblies are observed.
+\NOTE \ that the transcripts.fa files need to be given as \emph{long}.
+\begin{verbatim}
+> velveth merge $K -long directory*/transcripts.fa
+> velvetg merge -read_trkg yes -conserveLong yes
+> oases merge -merge
+\end{verbatim}
+
+
+
+\subsection{Using the supplied python script}
+With version 0.2 of Oases comes a new python script that runs the individual single-$k$ assemblies and the new merge module. We highly recommend to use the script for the analyses, but please read the previous subsections \ref{insert}-\ref{filtering} for the Oases params that you need to supply to the script.  However, as the script also runs velvet please consult the velvet manual for more insight.
+First notice the options for the script below \
+
+\begin{verbatim}
+python oases_pipeline.py
+Options:
+  -h, --help            show this help message and exit
+  -d FILES, --data=FILES
+                        Velveth file descriptors
+  -p OPTIONS, --options=OPTIONS
+                        Oases options that are passed to the command line,
+                        e.g., -cov_cutoff 5 -ins_length 300
+  -m KMIN, --kmin=KMIN  Minimum k
+  -M KMAX, --kmax=KMAX  Maximum k
+  -s KSTEP, --kstep=KSTEP
+                        Steps in k
+  -g KMERGE, --merge=KMERGE
+                        Merge k
+  -o NAME, --output=NAME
+                        Output directory prefix
+  -r, --mergeOnly       Only do the merge
+  -c, --clean           Clean temp files
+\end{verbatim}
+
+\NOTE \ that the script checks if Oases version at least 0.2.01 and Velvet at least 1.1.7 are installed on your path. Otherwise it will not work.
+ 
+
+We will illustrate the usage of the script with the two most common scenarios single-end and paired-end reads. \\
+First assume we \ want to compute a merged assembly from 21 to 35 with Oases on a single-end data set that is strand specific and retain transcripts of minimum length 100. We want to save the assemblies in folders that start with singleEnd :
+\begin{verbatim}
+python oases_pipeline.py -m 21 -M 35 -o singleEnd 
+-d " -strand_specific yes data/reads.fa "
+-p " -min_trans_lgth 100 " 
+\end{verbatim}
+
+The script creates a folder for named singleEnd\_$k$ for each single-$k$ assembly and one folder named singleEndMerged that contains the merged transcripts for all single-$k$ assemblies in the \emph{transcripts.fa} file.
+
+Now assume we have paired-end reads with insert length 300 and we want to compute a merged assembly from 17 to 40. We want to save the assemblies in the folders that start with pairedEnd
+\begin{verbatim}
+python oases_pipeline.py -m 17 -M 40 -o pairedEnd 
+-d " -shortPaired  data/reads.fa "
+-p " -ins_length 300 "
+\end{verbatim}
+Now say we found that using k=17 was a bit too low and we want to look at a different merged assembly range. Instead of redoing all the time consuming assemblies we can re-run the merged module on a different range from 21 to 40 like this:
+\begin{verbatim}
+python oases_pipeline.py -m 21 -M 40 -r -o pairedEnd  
+\end{verbatim}
+\NOTE \  that it is essential when you re-run the merged assembly for the script to function properly to give the exact same output prefix with the $-o$ parameter.
+\section{Output files}
+
+Oases produces two output files. The predicted transcript sequences can be found in \emph{transcripts.fa} and the file \emph{contig-ordering.txt} explains the composition of these transcripts, see below.
+\begin{enumerate}
+\item new\_directory/transcripts.fa --
+	A FASTA file containing the transcripts imputed directly from trivial
+	clusters of contigs (loci with less than two transcripts and Confidence Values = 1)
+	and the highly expressed transcripts imputed by dynamic
+	programming (loci with more than 2 transcripts and Confidence Values $<$1).
+   
+\item 
+new\_directory/contig-ordering-highly-expressed.txt --
+	A hybrid file which describes the contigs contained in each locus in FASTA
+	format, interlaced with one line summaries of the transcripts generated by 
+	dynamic programming. Each line is a string of atoms defined as:
+	\$contig\_id:\$cumulative\_length-(\$distance\_to\_next\_contig)-$>$next item
+
+	Here the cumulative length is the total length of the transcript assembly from
+	its 5' end to the 3' end of that contig. This allows you to locate the contig
+	sequence within the transcript sequence.
+	
+\end{enumerate}	
+\section{FAQ and Practical considerations}
+
+\subsubsection*{I am running out of memory. What should I do?}
+Depending on the complexity of the dataset it may happen that Velvet and Oases start to use a large amount of memory. In general, the assembly graphs for transcriptome data are smaller as compared to genome data. However, because the coverage is not even roughly uniform it depends on the sample being sequenced how much memory is used. Below we give examples of pre-processing steps that lead to a decrease in memory consumption, sorted in order of importance. \\
+
+\emph{Avoid overlapping reads} \\
+
+In our experience, if insert lengths are so short that paired reads overlap on their 3' ends, i.e., if insert length $<$ 2 $\cdot$ read length, this prevents the early filtering of low coverage reads. This means that even small datasets may require huge amounts of memory. A way to avoid the problem is to join paired-end reads that overlap for example using the software FLASH \emph{(FLASH: fast length adjustment of short reads to improve genome assemblies, Magoc T, Salzberg SL. Bioinformatics 2011)}. Otherwise it is possible to clip reads so that their overlap is strictly shorter than the hash length, that might lead to a huge loss of data however. \\
+
+\emph{Avoid bad quality reads} \\
+
+Reads with many errors create new nodes in the de Bruijn graph, all of which are later discarded by the error removal steps. Removing the errors in the reads \emph{a priori} is a good way to decrease the memory consumption.  A very common approach is to remove bad quality bases from the ends of read sequences or remove entire read sequences, numerous packages exist to do that but differ in functionality and definition of bad quality  (in no particular order):
+\begin{enumerate}
+\item  FASTX-toolkit - \url{http://hannonlab.cshl.edu/fastx_toolkit/}  (diverse functionality, command line, Galaxy support)
+\item ea-utils - \url{http://code.google.com/p/ea-utils/wiki/FastqMcf} (diverse functionality, command line)
+\item ShortRead (R-package) -  see here for long version \url{http://manuals.bioinformatics.ucr.edu/home/ht-seq} or short version \url{http://jermdemo.blogspot.com/2010/03/soft-trimming-in-r-using-shortread-and.html}
+\item Condetri - \url{http://code.google.com/p/condetri/} (only read trimmer good documentation, command line)
+\item bwa - \url{http://bio-bwa.sourceforge.net/bwa.shtml} (command line \emph{aln} option)
+\end{enumerate}
+
+\NOTE \  that when you use paired-end sequences and reads are discarded from the file you need to make sure that the fasta/fastq file that you give to velvety contains the paired-end reads in correct pairing.\\
+
+\emph{Trim sequencing adapters} \\
+
+Depending on your sequencing experiment, some of the reads may have adapters that were used, e.g, during library preparation. These adapters should be trimmed. You can use the Fastx-toolkit or ea-utils to do that, among many others, see above.\\
+
+\emph{Remove duplicate reads} \\
+
+Especially for paired-end datasets it happens that the exact same read sequence is found a large number of times. Again you can use some of the tools mentioned above to remove these duplicates.
+
+\subsubsection*{Oases does not give an expression level. How can I get that?}
+In general you need to align reads to the transcripts with your favorite aligner, one that allows for multi mappings !! Although few results exist about the difficulties and problems of quantitation of \emph{de novo} transcripts' expression levels, here are a few pointers to specialized tools:
+\begin{enumerate}
+\item  eXpress - \url{http://bio.math.berkeley.edu/eXpress/} (command line, Windows support)
+\item RSEM - \url{http://deweylab.biostat.wisc.edu/rsem/} (command line)
+
+\end{enumerate}
+
+\subsubsection*{I want to predict coding regions. How can I do that?}
+All the transcripts reported in a locus should have the same directionality, but that is only true if there is no contamination. Standard approaches are to use blastp and tools alike.
+Alternativley use gene prediction tools like GlimmerHMM, SNAP or AUGUSTUS.
+
+\end{document}
