@@ -408,7 +408,7 @@ static void produceTranscript(Locus * locus, IDnum nodesInList)
 	transcript->contigCount = nodesInList;
 	transcript->contigs = callocOrExit(nodesInList, Node *);
 	transcript->distances = callocOrExit(nodesInList, Coordinate);
-	transcript->confidence = 1;
+	transcript->confidence = nodesInList / locus->contigCount;
 
 	while ((node = popNodeRecord())) {
 		transcript->contigs[index] = node;

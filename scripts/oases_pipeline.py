@@ -3,22 +3,25 @@
 import sys
 import subprocess
 import optparse
+import shutil
+import os
 
 ##########################################
 ## Options and defaults
 ##########################################
 def getOptions():
-	parser = optparse.OptionParser('usage: %prog [options] velveth file descriptors')
+	parser = optparse.OptionParser('usage: %prog [options] --data "velveth file descriptors"')
+	parser.add_option('-d', '--data',dest='data',help='Velveth file descriptors',metavar='FILES', default='')
+	parser.add_option('-p', '--options',dest='oasesOptions',help='Oases options that are passed to the command line, e.g., -cov_cutoff 5 -ins_length 300 ',metavar='OPTIONS', default='')
 	parser.add_option('-m', '--kmin',dest='kmin',type="int",help='Minimum k',default=19)
 	parser.add_option('-M', '--kmax',dest='kmax',type="int",help='Maximum k',default=31)
 	parser.add_option('-s', '--kstep',dest='kstep',type="int",help='Steps in k',default=2)
 	parser.add_option('-g', '--merge',dest='kmerge',type="int",help='Merge k',default=27)
-	parser.add_option('-p', '--options',dest='oasesOptions',help='Oases options',metavar='OPTIONS', default='')
 	parser.add_option('-o', '--output',dest='directoryRoot',help='Output directory prefix',metavar='NAME',default='oasesPipeline')
 	parser.add_option('-r', '--mergeOnly',dest='mergeOnly',help='Only do the merge',action='store_true',default=False)
+	parser.add_option('-c', '--clean',dest='clean',help='Clean temp files',action='store_true',default=False)
 	options, args = parser.parse_args()
-	options.data = args
-	if len(options.data) == 0:
+	if not options.mergeOnly and len(options.data) == 0:
 		parser.print_help()
 		print ''
 		print 'You forgot to provide some data files!'
@@ -31,7 +34,7 @@ def getOptions():
 ## Assembly procedure
 ##########################################
 def singleKAssemblies(options):
-	ret = subprocess.call(['velveth', options.directoryRoot, '%s,%s,%s' % (options.kmin, options.kmax, options.kstep)] + options.data)
+	ret = subprocess.call(['velveth', options.directoryRoot, '%s,%s,%s' % (options.kmin, options.kmax, options.kstep)] + options.data.split())
 	assert ret == 0, "Hash failed"
 	for k in range(options.kmin, options.kmax, options.kstep):
 	    ret = subprocess.call(['velvetg','%s_%i' % (options.directoryRoot, k), '-read_trkg', 'yes'])
@@ -82,6 +85,20 @@ def checkOases():
 	assert False
 
 ##########################################
+## Clean up
+##########################################
+def clean(options):
+	for k in range(options.kmin, options.kmax, options.kstep):
+	    shutil.rmtree("%s_%i" % (options.directoryRoot, k))
+	os.remove("%sMerged/Sequences" % options.directoryRoot)
+	os.remove("%sMerged/Roadmaps" % options.directoryRoot)
+	os.remove("%sMerged/PreGraph" % options.directoryRoot)
+	os.remove("%sMerged/Graph2" % options.directoryRoot)
+	os.remove("%sMerged/LastGraph" % options.directoryRoot)
+	os.remove("%sMerged/contigs.fa" % options.directoryRoot)
+	os.remove("%sMerged/Log" % options.directoryRoot)
+
+##########################################
 ## Master function
 ##########################################
 def main():
@@ -91,6 +108,8 @@ def main():
 	if not options.mergeOnly:
 	    singleKAssemblies(options)
 	mergeAssemblies(options)
+	if options.clean:
+	    clean(options)
 
 if __name__ == "__main__":
 	main()
