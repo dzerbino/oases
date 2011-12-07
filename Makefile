@@ -31,7 +31,7 @@ endif
 default: oases
 
 ifdef BUNDLEDZLIB
-Z_LIB_DIR=third-party/zlib-1.2.3
+Z_LIB_DIR=$(VELVET_DIR)/third-party/zlib-1.2.3
 Z_LIB_FILES=$(Z_LIB_DIR)/*.o
 override DEF := $(DEF) -D BUNDLEDZLIB
 
