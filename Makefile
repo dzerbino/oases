@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 DEBUG = -g
-LDFLAGS = -lm
+LIBS = -lm
 OPT = -O3
 MAXKMERLENGTH=31
 CATEGORIES=2
@@ -92,19 +92,19 @@ OasesManual.pdf: doc/manual/OasesManual.tex
 	cd doc; make
 
 oases : cleanobj velvet obj $(OBJ) 
-	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES)
+	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES) $(LIBS)
 
 
 debug : cleanobj velvetdbg obj/dbg $(OBJDBG)
-	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES)
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES) $(LIBS)
 
 color : override DEF := $(DEF) -D COLOR
 color : cleanobj velvet_de obj $(OBJ)
-	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases_de $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES)
+	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases_de $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES) $(LIBS)
 
 colordebug : override DEF := $(DEF) -D COLOR
 colordebug : cleanobj velvetdbg_de obj/dbg $(OBJDBG) 
-	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases_de $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES)
+	$(CC) $(CFLAGS) $(DEBUG) $(LDFLAGS) -o oases_de $(OBJDBG) $(VELVET_DBG_FILES) $(Z_LIB_FILES) $(LIBS)
 
 obj:
 	mkdir -p obj
