@@ -6,6 +6,7 @@ OPT = -O3
 MAXKMERLENGTH=31
 CATEGORIES=2
 DEF = -D MAXKMERLENGTH=$(MAXKMERLENGTH) -D CATEGORIES=$(CATEGORIES)
+VELVET_DIR=../velvet
 
 ifdef BIGASSEMBLY
 override DEF := $(DEF) -D BIGASSEMBLY
@@ -47,7 +48,6 @@ zlib:
 clean-zlib:
 endif
 
-VELVET_DIR=../velvet
 VELVET_SRC_DIR=$(VELVET_DIR)/src
 VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph allocArray
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
