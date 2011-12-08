@@ -1256,7 +1256,7 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 	
 	// Print
 	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
-		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) strlen(sequence) - offset);
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) (strlen(sequence) - offset));
 	printFastA(outfile, sequence + offset);
 
 	free(sequence);
