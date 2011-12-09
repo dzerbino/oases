@@ -34,22 +34,22 @@ def getOptions():
 ## Assembly procedure
 ##########################################
 def singleKAssemblies(options):
-	ret = subprocess.call(['velveth', options.directoryRoot, '%s,%s,%s' % (options.kmin, options.kmax, options.kstep)] + options.data.split())
-	assert ret == 0, "Hash failed"
+	p = subprocess.Popen(['velveth', options.directoryRoot, '%s,%s,%s' % (options.kmin, options.kmax, options.kstep)] + options.data.split(), stdout=subprocess.PIPE)
+	assert p.wait() == 0, p.stdout.read() + "Hash failed\n"
 	for k in range(options.kmin, options.kmax, options.kstep):
-	    ret = subprocess.call(['velvetg','%s_%i' % (options.directoryRoot, k), '-read_trkg', 'yes'])
-	    assert ret == 0, "Velvetg failed at k = %i" % k
-	    ret = subprocess.call(['oases','%s_%i' % (options.directoryRoot, k)] + options.oasesOptions.split())
-	    assert ret == 0, "Oases failed at k = %i" % k
+	    p = subprocess.Popen(['velvetg','%s_%i' % (options.directoryRoot, k), '-read_trkg', 'yes'], stdout=subprocess.PIPE)
+	    assert p.wait() == 0, "Velvetg failed at k = %i\n" % k + p.stdout.read()
+	    p = subprocess.Popen(['oases','%s_%i' % (options.directoryRoot, k)] + options.oasesOptions.split(), stdout=subprocess.PIPE)
+	    assert p.wait() == 0, "Oases failed at k = %i\n" % k + p.stdout.read()
 	
 def mergeAssemblies(options):
 	files = ["%s_%i/transcripts.fa" % (options.directoryRoot, X) for X in range(options.kmin, options.kmax, options.kstep)]
-	ret = subprocess.call(['velveth','%sMerged' % options.directoryRoot, str(options.kmerge), '-long'] + files)
-	assert ret == 0, "Velveth failed at merge"
-	ret = subprocess.call(['velvetg','%sMerged' % options.directoryRoot,'-conserveLong','yes','-read_trkg','yes'])
-	assert ret == 0, "Velvetg failed at merge"
-	ret = subprocess.call(['oases','%sMerged' % options.directoryRoot,'-merge','yes'])
-	assert ret == 0, "Oases failed merge"
+	p = subprocess.Popen(['velveth','%sMerged' % options.directoryRoot, str(options.kmerge), '-long'] + files, stdout=subprocess.PIPE)
+	assert p.wait() == 0, p.stdout.read() + "Velveth failed at merge\n"
+	p = subprocess.Popen(['velvetg','%sMerged' % options.directoryRoot,'-conserveLong','yes','-read_trkg','yes'], stdout=subprocess.PIPE)
+	assert p.wait() == 0, p.stdout.read() + "Velvetg failed at merge\n"
+	p = subprocess.Popen(['oases','%sMerged' % options.directoryRoot,'-merge','yes'], stdout=subprocess.PIPE)
+	assert p.wait() == 0, p.stdout.read() + "Oases failed merge\n"
 
 ##########################################
 ## Checking dependencies
