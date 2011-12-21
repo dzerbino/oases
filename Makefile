@@ -49,7 +49,7 @@ clean-zlib:
 endif
 
 VELVET_SRC_DIR=$(VELVET_DIR)/src
-VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph allocArray
+VELVET_OBJ = recycleBin utility graph passageMarker readSet tightString kmer dfibHeap dfib concatenatedGraph graphStats fibHeap fib readCoherentGraph allocArray binarySequences
 VELVET_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/%.o)
 VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 
