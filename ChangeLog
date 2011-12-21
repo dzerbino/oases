@@ -112,3 +112,6 @@ V 0.2.01
 V 0.2.02
 - Bundled zlib pointer in Makefile
 - Ubuntu linking problem in Makefile
+
+V 0.2.03
+- Compatibility with Velvet 1.2.x
