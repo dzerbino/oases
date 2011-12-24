@@ -115,3 +115,8 @@ V 0.2.02
 
 V 0.2.03
 - Compatibility with Velvet 1.2.x
+
+V 0.2.04
+- Updated Manual
+- Pipeline script fixed to work with inclusive intervals
+- Improved redundancy filters

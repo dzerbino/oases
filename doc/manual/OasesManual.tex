@@ -12,7 +12,7 @@
 
 \newpage
 
-\textbf{Note:} If you are not familiar with using Velvet, read Velvet's manual first, as many references below will point to that document.
+\NOTE\ If you are not familiar with using Velvet, read Velvet's manual first, as many references below will point to that document.
 
 \section{For impatient people}
 \begin{verbatim}
@@ -24,9 +24,9 @@
 > velvetg directory_23 -read_trkg yes
 > oases directory_23
 
-> velveth merge 23 -long directory*/transcripts.fa
-> velvetg merge -read_trkg yes -conserveLong yes
-> oases merge -merge
+> velveth mergedAssembly 23 -long directory*/transcripts.fa
+> velvetg mergedAssembly -read_trkg yes -conserveLong yes
+> oases mergedAssembly -merge
 \end{verbatim}
 
 Or use the python script oases\_pipeline.py.
@@ -151,15 +151,15 @@ By setting the minimum transfrag length (by default 100bp), the user can control
 
 \subsection{Assembly merging}
 
-After running the previous process for different values of $k$ it is necessary to merge the results of all these assemblies (contained in \emph{transcripts.fa} files) into a single, non redundant assembly. To realize this merge, it is necessary to choose a value of $K$. Experiments have shown that $K=27$ works nicely for most organisms. Higher values for $K$ should be used if problems with missassemblies are observed.
-\NOTE \ that the transcripts.fa files need to be given as \emph{long}.
+After running the previous process for different values of $k$ it is necessary to merge the results of all these assemblies (contained in \emph{transcripts.fa} files) into a single, non redundant assembly. To realize this merge, it is necessary to choose a value of $K$. Experiments have shown that $K=27$ works nicely for most organisms. Higher values for $K$ should be used if problems with missassemblies are observed. \\
+ Assume we want to create a merged assembly in a folder called MergedAssembly.
 \begin{verbatim}
-> velveth merge $K -long directory*/transcripts.fa
-> velvetg merge -read_trkg yes -conserveLong yes
-> oases merge -merge
+
+> velveth MergedAssembly/ K -long directory*/transcripts.fa
+> velvetg MergedAssembly/ -read_trkg yes -conserveLong yes
+> oases MergedAssembly/ -merge
 \end{verbatim}
-
-
+\NOTE \ that the transcripts.fa files need to be given as \emph{long}. \\
 
 \subsection{Using the supplied python script}
 With version 0.2 of Oases comes a new python script that runs the individual single-$k$ assemblies and the new merge module. We highly recommend to use the script for the analyses, but please read the previous subsections \ref{insert}-\ref{filtering} for the Oases params that you need to supply to the script.  However, as the script also runs velvet please consult the velvet manual for more insight.
@@ -197,7 +197,7 @@ python oases_pipeline.py -m 21 -M 35 -o singleEnd
 -p " -min_trans_lgth 100 " 
 \end{verbatim}
 
-The script creates a folder for named singleEnd\_$k$ for each single-$k$ assembly and one folder named singleEndMerged that contains the merged transcripts for all single-$k$ assemblies in the \emph{transcripts.fa} file.
+The script creates a folder named singleEnd\_$k$ for each single-$k$ assembly and one folder named singleEndMerged that contains the merged transcripts for all single-$k$ assemblies in the \emph{transcripts.fa} file.
 
 Now assume we have paired-end reads with insert length 300 and we want to compute a merged assembly from 17 to 40. We want to save the assemblies in the folders that start with pairedEnd
 \begin{verbatim}
@@ -252,7 +252,7 @@ Reads with many errors create new nodes in the de Bruijn graph, all of which are
 \item bwa - \url{http://bio-bwa.sourceforge.net/bwa.shtml} (command line \emph{aln} option)
 \end{enumerate}
 
-\NOTE \  that when you use paired-end sequences and reads are discarded from the file you need to make sure that the fasta/fastq file that you give to velvety contains the paired-end reads in correct pairing.\\
+\NOTE \  that when you use paired-end sequences and reads are discarded from the file you need to make sure that the fasta/fastq file that you give to velveth contains the paired-end reads in correct pairing.\\
 
 \emph{Trim sequencing adapters} \\
 

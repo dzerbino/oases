@@ -103,10 +103,8 @@ static int compareDirectedMarkers(PassageMarkerI A, PassageMarkerI B) {
 		return 1;
 	else if (nextB)
 		return -1;
-	else if (getFinishOffset(B) >= getFinishOffset(A))
-		return 1;
 	else
-		return -1;
+		return 1;
 }
 
 static int compareMarkers(PassageMarkerI A, PassageMarkerI B) {
