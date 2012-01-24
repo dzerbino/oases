@@ -120,3 +120,7 @@ V 0.2.04
 - Updated Manual
 - Pipeline script fixed to work with inclusive intervals
 - Improved redundancy filters
+
+V 0.2.05
+- Updated pipeline script for subprocess change
+- Increased default MAXKMERLENGTH
