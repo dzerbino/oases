@@ -124,3 +124,4 @@ V 0.2.04
 V 0.2.05
 - Updated pipeline script for subprocess change
 - Increased default MAXKMERLENGTH
+- Bug in sorting nodes in filterTranscripts

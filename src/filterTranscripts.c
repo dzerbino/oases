@@ -451,8 +451,8 @@ static void addTranscriptToLocus(Locus * locus)
 }
 
 static int compareNodes(const void * A, const void * B) {
-	Node * a = (Node *) A;
-	Node * b = (Node *) B;
+	Node * a = *((Node **) A);
+	Node * b = *((Node **) B);
 	if (getNodeID(a) > getNodeID(b))
 		return 1;
 	else if (getNodeID(a) < getNodeID(b))
