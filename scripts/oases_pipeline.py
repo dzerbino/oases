@@ -36,26 +36,26 @@ def getOptions():
 def singleKAssemblies(options):
 	p = subprocess.Popen(['velveth', options.directoryRoot, '%i,%i,%i' % (options.kmin, options.kmax+options.kstep, options.kstep)] + options.data.split(), stdout=subprocess.PIPE)
 	output = p.communicate()
-	assert p.returncode == 0, output + "Hash failed\n"
+	assert p.returncode == 0, output[0] + "Hash failed\n"
 	for k in range(options.kmin, options.kmax+options.kstep, options.kstep):
 	    p = subprocess.Popen(['velvetg','%s_%i' % (options.directoryRoot, k), '-read_trkg', 'yes'], stdout=subprocess.PIPE)
 	    output = p.communicate()
-	    assert p.returncode == 0, "Velvetg failed at k = %i\n%s" % (k, output)
+	    assert p.returncode == 0, "Velvetg failed at k = %i\n%s" % (k, output[0])
 	    p = subprocess.Popen(['oases','%s_%i' % (options.directoryRoot, k)] + options.oasesOptions.split(), stdout=subprocess.PIPE)
 	    output = p.communicate()
-	    assert p.returncode == 0, "Oases failed at k = %i\n%s" % (k, output)
+	    assert p.returncode == 0, "Oases failed at k = %i\n%s" % (k, output[0])
 	
 def mergeAssemblies(options):
 	files = ["%s_%i/transcripts.fa" % (options.directoryRoot, X) for X in range(options.kmin, options.kmax+options.kstep, options.kstep)]
 	p = subprocess.Popen(['velveth','%sMerged' % options.directoryRoot, str(options.kmerge), '-long'] + files, stdout=subprocess.PIPE)
 	output = p.communicate()
-	assert p.returncode == 0, output + "Velveth failed at merge\n"
+	assert p.returncode == 0, output[0] + "Velveth failed at merge\n"
 	p = subprocess.Popen(['velvetg','%sMerged' % options.directoryRoot,'-conserveLong','yes','-read_trkg','yes'], stdout=subprocess.PIPE)
 	output = p.communicate()
-	assert p.returncode == 0, output + "Velvetg failed at merge\n"
+	assert p.returncode == 0, output[0] + "Velvetg failed at merge\n"
 	p = subprocess.Popen(['oases','%sMerged' % options.directoryRoot,'-merge','yes'], stdout=subprocess.PIPE)
 	output = p.communicate()
-	assert p.returncode == 0, output + "Oases failed merge\n"
+	assert p.returncode == 0, output[0] + "Oases failed merge\n"
 
 ##########################################
 ## Checking dependencies
