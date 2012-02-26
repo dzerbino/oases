@@ -140,13 +140,19 @@ static void destroyTranscript(PassageMarkerI marker) {
 	}
 }
 
-static boolean removeRedundantTranscripts_Marker(PassageMarkerI marker) {
+static boolean removeRedundantTranscripts_Marker(PassageMarkerI marker, boolean uniqueNodes) {
 	PassageMarkerI marker2;
-
+	if (getUniqueness(getNode(marker)) != uniqueNodes)
+		return;
+	
 	for (marker2 = getMarker(getNode(marker)); marker2; marker2 = nextMarker) {
 		nextMarker = getNextInNode(marker2);
 
-		if (getPassageMarkerStatus(marker2))
+		if (uniqueNodes && getPassageMarkerStatus(marker2) == 1)
+			continue;
+		if (!uniqueNodes && getPassageMarkerStatus(marker2) == 2)
+			continue;
+		if (!isInitial(marker) && !isInitial(marker2))
 			continue;
 
 		int comparison = compareMarkers(marker, marker2);
@@ -164,7 +170,7 @@ static boolean removeRedundantTranscripts_Marker(PassageMarkerI marker) {
 	return false;
 }
 
-static void removeRedundantTranscripts_Transcript(PassageMarkerI marker) {
+static void removeRedundantTranscripts_Transcript(PassageMarkerI marker, boolean uniqueNodes) {
 	PassageMarkerI first, prev, ptr;
 
 	if (getPassageMarkerStatus(marker))
@@ -174,20 +180,27 @@ static void removeRedundantTranscripts_Transcript(PassageMarkerI marker) {
 	while((prev = getPreviousInSequence(first)))
 		first = prev;
 
-	for (ptr = first; ptr; ptr = getNextInSequence(ptr))
-		setPassageMarkerStatus(ptr, true);
+	if (uniqueNodes)
+		for (ptr = first; ptr; ptr = getNextInSequence(ptr))
+			setPassageMarkerStatus(ptr, 1);
+	else
+		for (ptr = first; ptr; ptr = getNextInSequence(ptr))
+			setPassageMarkerStatus(ptr, 2);
 
 	for (ptr = first; ptr; ptr = getNextInSequence(ptr))
-		if (removeRedundantTranscripts_Marker(marker))
+		if (removeRedundantTranscripts_Marker(marker, uniqueNodes))
 			break;
 }
 
-static void removeRedundantTranscripts_Node(Node * node) {
+static void removeRedundantTranscripts_Node(Node * node, boolean uniqueNodes) {
 	PassageMarkerI marker;
 	
+	if (getUniqueness(node) != uniqueNodes)
+		return;
+
 	for (marker = getMarker(node); marker; marker = nextTranscript) {
 		nextTranscript = getNextInNode(marker);
-		removeRedundantTranscripts_Transcript(marker);
+		removeRedundantTranscripts_Transcript(marker, uniqueNodes);
 	}
 }
 
@@ -200,8 +213,13 @@ void removeRedundantTranscripts(Graph * argGraph) {
 	resetPassageMarkerStatuses(graph);
 	defineUniqueNodes(graph);
 
+	puts("Scanning long nodes");
 	for (index = 1; index <= nodeCount(graph); index++)
-		removeRedundantTranscripts_Node(getNodeInGraph(graph, index));
+		removeRedundantTranscripts_Node(getNodeInGraph(graph, index), true);
+
+	puts("Scanning short nodes");
+	for (index = 1; index <= nodeCount(graph); index++)
+		removeRedundantTranscripts_Node(getNodeInGraph(graph, index), false);
 }
 
 /////////////////////////////////////////

@@ -125,3 +125,8 @@ V 0.2.05
 - Updated pipeline script for subprocess change
 - Increased default MAXKMERLENGTH
 - Bug in sorting nodes in filterTranscripts
+
+V 0.2.06
+- Bug in Python
+- Streamlined merging
+- Updated manual
