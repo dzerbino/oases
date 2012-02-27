@@ -143,7 +143,7 @@ static void destroyTranscript(PassageMarkerI marker) {
 static boolean removeRedundantTranscripts_Marker(PassageMarkerI marker, boolean uniqueNodes) {
 	PassageMarkerI marker2;
 	if (getUniqueness(getNode(marker)) != uniqueNodes)
-		return;
+		return false;
 	
 	for (marker2 = getMarker(getNode(marker)); marker2; marker2 = nextMarker) {
 		nextMarker = getNextInNode(marker2);
