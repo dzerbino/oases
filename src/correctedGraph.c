@@ -2461,7 +2461,66 @@ static boolean noLongReads(Arc * arc) {
 	return false;
 }
 
-static void removeLameNodeArcs(Node * node, Graph * graph, boolean conserveLong) {
+static void denounceCommonLongReads(Node * A, Node * B, boolean * dubious) {
+	PassageMarkerI marker;
+
+	for (marker = getMarker(A); marker != NULL_IDX; marker = getNextInNode(marker))
+		if (getNode(getNextInSequence(marker)) == B)
+			dubious[getAbsolutePassMarkerSeqID(marker)] = true;
+}
+
+static void denounceCommonShortReads(Node * A, Node * B, boolean * dubious, Graph * graph) {
+	IDnum BLength, BIndex, BVal;
+	IDnum ALength, AIndex, AVal;
+	ShortReadMarker *BArray, *AArray;
+
+	AArray = getNodeReads(A, graph);
+	ALength = getNodeReadCount(A, graph);
+
+	BArray = getNodeReads(B, graph);
+	BLength = getNodeReadCount(B, graph);
+
+	if (AArray == NULL || BArray == NULL)
+		return;
+
+	AIndex = 0;
+	BIndex = 0;
+	AVal = getShortReadMarkerID(getShortReadMarkerAtIndex(AArray, AIndex));
+	BVal = getShortReadMarkerID(getShortReadMarkerAtIndex(BArray, BIndex));
+
+	while (AIndex < ALength && BIndex < BLength) {
+		if (AVal < BVal) {
+			if (++AIndex == ALength)
+				return;
+			AVal = getShortReadMarkerID(getShortReadMarkerAtIndex(AArray, AIndex));
+		} else if (AVal == BVal) {
+			dubious[AVal] = true;
+			if (++AIndex == ALength)
+				return;
+			AVal = getShortReadMarkerID(getShortReadMarkerAtIndex(AArray, AIndex));
+			if (++BIndex == BLength)
+				return;
+			BVal = getShortReadMarkerID(getShortReadMarkerAtIndex(BArray, BIndex));
+		} else {
+			if (++BIndex == BLength)
+				return;
+			BVal = getShortReadMarkerID(getShortReadMarkerAtIndex(BArray, BIndex));
+		}
+	}
+}
+
+static void destroyLameArc(Arc * arc, Graph * graph, boolean * dubious) {
+	Node * A = getOrigin(arc);
+	Node * B = getDestination(arc);
+	denounceCommonLongReads(A,B,dubious);
+	if (readStartsAreActivated(graph)) {
+		denounceCommonShortReads(A, B, dubious, graph);
+		denounceCommonShortReads(getTwinNode(A), getTwinNode(B), dubious, graph);
+	}
+	destroyArc(arc, graph);
+}
+
+static void removeLameNodeArcs(Node * node, Graph * graph, boolean conserveLong, boolean * dubious) {
 	Arc * arc;
 	IDnum totalArcCoverage = 0;
 
@@ -2472,22 +2531,22 @@ static void removeLameNodeArcs(Node * node, Graph * graph, boolean conserveLong)
 		totalArcCoverage += getMultiplicity(arc); 
 
 	for (arc = getArc(node); arc; arc = getNextArc(arc))
-		if (getMultiplicity(arc) < totalArcCoverage * MULTIPLICITY_CUTOFF && (!conserveLong || noLongReads(arc)))
-			destroyArc(arc, graph);
+		if (getMultiplicity(arc) < totalArcCoverage * MULTIPLICITY_CUTOFF && (!conserveLong || noLongReads(arc))) 
+			destroyLameArc(arc, graph, dubious);
 }
 
-static void removeLameArcs(Graph * graph, boolean conserveLong) {
+static void removeLameArcs(Graph * graph, boolean conserveLong, boolean * dubious) {
 	IDnum index;
 
 	velvetLog("Removing low coverage edges from the graph\n");
 
 	for (index = -nodeCount(graph); index <= nodeCount(graph); index++)
-		removeLameNodeArcs(getNodeInGraph(graph, index), graph, conserveLong);
+		removeLameNodeArcs(getNodeInGraph(graph, index), graph, conserveLong, dubious);
 
 	concatenateGraph(graph);
 }
 
-void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category * argSequenceCategories, boolean conserveLong)
+void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category * argSequenceCategories, boolean conserveLong, boolean * dubious)
 {
 	IDnum nodes;
 	IDnum index;
@@ -2502,7 +2561,7 @@ void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category *
 
 	printf("Correcting graph with cutoff %f\n", MAXDIVERGENCE);
 
-	removeLameArcs(graph, conserveLong);
+	removeLameArcs(graph, conserveLong, dubious);
 	//clipTips(graph);
 	nodes = nodeCount(graph);
 
@@ -2548,7 +2607,7 @@ void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category *
 	concatenateGraph(graph);
 
 	clipTipsHard(graph, conserveLong);
-	removeLameArcs(graph, conserveLong);
+	removeLameArcs(graph, conserveLong, dubious);
 
 	//Deallocating globals
 	free(times);

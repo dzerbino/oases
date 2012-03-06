@@ -892,7 +892,7 @@ void computeTranscripts(Graph * argGraph, Locus * loci, IDnum locusCount) {
 	Locus *locus;
 	IDnum distribution[4];
 	int configuration;
-	double *scores = callocOrExit(2 * nodeCount(graph), double);
+	double *scores = callocOrExit(2 * nodeCount(argGraph), double);
 
 	graph = argGraph;
 

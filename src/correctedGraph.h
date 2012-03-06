@@ -25,7 +25,7 @@ void clipTips(Graph * graph);
 
 void clipTipsHard(Graph * graph, boolean conserveLong);
 
-void correctGraph(Graph * graph, ShortLength * sequenceLengths, Category * sequenceCategories, boolean conserveLong);
+void correctGraph(Graph * graph, ShortLength * sequenceLengths, Category * sequenceCategories, boolean conserveLong, boolean * dubious);
 
 // Clumsy and dirty patch
 boolean *removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(Graph * graph,

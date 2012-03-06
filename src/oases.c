@@ -294,7 +294,7 @@ int main(int argc, char **argv)
 							      "nothing");
 
 	clipTipsHard(graph, merge);
-	correctGraph(graph, sequenceLengths, reads->categories, merge);
+	correctGraph(graph, sequenceLengths, reads->categories, merge, dubious);
 
 	strcpy(graphFilename, directory);
 	strcat(graphFilename, "/stats.txt");
@@ -337,7 +337,7 @@ int main(int argc, char **argv)
 	strcpy(transcriptFilename, directory);
 	strcat(transcriptFilename,
 	       "/contig-ordering.txt");
-	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength);
+	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength, graph);
 	velvetLog("Finished extracting transcripts, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
 
 	if (unusedReads) 
