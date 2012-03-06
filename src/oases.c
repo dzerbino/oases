@@ -40,8 +40,10 @@
 #include "correctedGraph.h"
 
 // Oases specific stuff 
+#include "locus.h"
 #include "transcript.h"
 #include "filterTranscripts.h"
+#include "oasesExport.h"
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 2;
@@ -322,7 +324,7 @@ int main(int argc, char **argv)
 
 	    loci =
 		extractGraphLoci(graph, reads, dubious, sequenceLengths, &locusCount, scaffolding);
-	    computeTranscripts(loci, locusCount);
+	    computeTranscripts(graph, loci, locusCount);
 	} else {
 	    removeRedundantTranscripts(graph);
 	    loci = reextractGraphLoci(graph, &locusCount);
@@ -348,10 +350,6 @@ int main(int argc, char **argv)
 		exportTranscriptMappings(loci, locusCount, graph, reads, minTransLength, directory);
 
 	cleanTranscriptMemory(loci, locusCount);
-
-	if (!merge)
-		removeIndirectConnections();
-
 	cleanLocusMemory(loci, locusCount);
 	destroyGraph(graph);
 	free(graphFilename);

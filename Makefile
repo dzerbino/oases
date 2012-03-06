@@ -61,7 +61,7 @@ VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 # Sparc/Solaris users: uncomment the following line
 # CFLAGS = -Wall -m64
 
-OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o obj/filterTranscripts.o
+OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o obj/filterTranscripts.o obj/locus.o obj/nodeList.o obj/oasesExport.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
 default : oases doc

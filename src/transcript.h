@@ -19,58 +19,18 @@
 #ifndef _TRANSCRIPT_H_
 #define _TRANSCRIPT_H_
 
-typedef struct locus_st Locus;
-typedef struct transcript_st Transcript;
-typedef struct event_st Event;
+#include "locus.h"
 
-struct locus_st {
-	IDnum contigCount;
-	IDnum longContigCount;
-	Node **contigs;
-	Transcript *transcript;
-	Event *event;
-};
-
-struct transcript_st {
-	IDnum contigCount;
-	Node **contigs;
-	Coordinate *distances;
-	double confidence;
-	Transcript *next;
-};
-
-void setUnreliableConnectionCutoff_oases(int val);
-
-Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
-			boolean * dubious, ShortLength * lengths,
-			IDnum * locusCount, boolean scaffolding);
-void computeTranscripts(Locus * loci, IDnum locusCount);
-void computeASEvents(Locus * loci, IDnum locusCount);
-
-void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength, Graph * graph);
-void exportASEvents(Locus * loci, IDnum locusCount, char *filename);
-void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordinate minTransLength);
-void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char* directory);
-IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount);
-void exportAMOSTranscripts(Graph * graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char * directory);
-void exportTranscriptMappings(Locus * loci, IDnum locusCount, Graph * graph, ReadSet * reads, Coordinate minLength, char * directory);
+void computeTranscripts(Graph * graph, Locus * loci, IDnum locusCount);
 
 void removeIndirectConnections();
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount);
 void cleanLocusMemory(Locus * loci, IDnum locusCount);
 
-void clipTipsHard(Graph * graph, boolean conserveLong);
-
 ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
 			    int wordLength);
 
-void removeNodeFromLocus(Node * node);
-
-void setPairedThreshold(double pairedThreshold);
-
 void exportLocusGraph(FILE * outfile, IDnum index, Locus * loci);
-
-void setDegreeCutoff(int val);
 
 void detachShortReads(ReadSet * reads, int wordLength);
 Transcript * allocateTranscript();

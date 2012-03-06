@@ -37,7 +37,6 @@
 #define BLOCK_SIZE  100000
 #define LENGTHCUTOFF 50
 
-typedef struct connection_st Connection;
 typedef struct readOccurence_st ReadOccurence;
 
 struct connection_st {
@@ -515,7 +514,7 @@ Connection *getConnectionBetweenNodes(Node * nodeA, Node * nodeB)
 	return NULL;
 }
 
-static void incrementConnectionWeight(Connection * connect,
+void incrementConnectionWeight(Connection * connect,
 				      double increment)
 {
 	connect->weight += increment;
@@ -969,37 +968,42 @@ static void removeUnreliableConnections(Category * categories)
 	free(counts);
 }
 
+static void removeNodeConnectionGappedConnection(Node * node, Connection * connect) 
+{
+	Coordinate distance;
+	int overlap = getWordLength(graph) - 1;
+
+	distance = connect->distance;
+	distance -= getNodeLength(node)/2;
+	distance -= getNodeLength(connect->destination)/2;
+
+	if (distance > overlap && connect->direct_count == 0)
+		destroyConnection(connect, getNodeID(node));
+
+}
+
+static void removeNodeGappedConnections(Node * node) 
+{
+	Connection *connect, *next;
+
+	if (node == NULL)
+		return;
+
+	for (connect = scaffold[getNodeID(node) + nodeCount(graph)]; connect != NULL;
+	     connect = next) {
+		next = connect->next;
+		removeNodeConnectionGappedConnection(node, connect);
+	}
+
+}
+
 static void removeGappedConnections()
 {
 	IDnum maxNodeIndex = nodeCount(graph) * 2 + 1;
 	IDnum index;
-	Connection *connect, *next;
-	Node * node;
-	Coordinate halfNodeLength;
-	Coordinate distance;
-	IDnum nodes = nodeCount(graph);
-	int overlap = getWordLength(graph) - 1;
 
-	for (index = 0; index < maxNodeIndex; index++) {
-		node = getNodeInGraph(graph, index - nodes);
-
-		if (node == NULL)
-			continue;
-
-		halfNodeLength = getNodeLength(node)/2;
-
-		for (connect = scaffold[index]; connect != NULL;
-		     connect = next) {
-			next = connect->next;
-	
-			distance = connect->distance;
-			distance -= halfNodeLength;	
-			distance -= getNodeLength(connect->destination)/2;
-
-			if (distance > overlap && connect->direct_count == 0)
-				destroyConnection(connect, index - nodes);
-		}
-	}
+	for (index = 0; index < maxNodeIndex; index++)
+		removeNodeGappedConnections(getNodeInGraph(graph, index - nodeCount(graph)));
 }
 
 static void defineUniqueness(Node * node)
