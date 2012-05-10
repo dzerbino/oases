@@ -1932,7 +1932,11 @@ static void cleanUpRedundancy()
 	while (slowMarker != NULL_IDX && fastMarker != NULL_IDX) {
 		if (isTerminal(slowMarker))
 			slowLength = finalLength;
-		else {
+		else if (getPassageMarkerFinish(slowMarker) == 0) {
+			slowLength = 0
+			if (slowLength < slowConstraint)
+				slowLength = slowConstraint;
+		} else {
 			slowLength =
 			    slowToFastMapping[getPassageMarkerFinish
 					      (slowMarker) - 1];
