@@ -543,7 +543,7 @@ void recomputeTranscripts(Locus ** loci, IDnum * locusCount) {
 
 	velvetLog("Catching orphaned transcripts\n");
 
-	markedTranscripts = callocOrExit(sequenceCount(graph), boolean);
+	markedTranscripts = callocOrExit(sequenceCount(graph) + 1, boolean);
 	
 	for (index = 1; index <= nodeCount(graph); index++)
 		for (marker = getMarker(getNodeInGraph(graph, index)); marker; marker = getNextInNode(marker))
