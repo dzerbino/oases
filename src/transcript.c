@@ -468,7 +468,7 @@ static void produceTranscript(Locus * locus, IDnum nodesInList)
 	IDnum index = 0;
 	Node *node;
 
-	Transcript *transcript = newTranscript(nodesInList, 1);
+	Transcript *transcript = newTranscript(nodesInList, ((double) nodesInList) / locus->contigCount);
 
 	while ((node = popNodeRecord())) {
 		transcript->contigs[index] = node;
@@ -540,8 +540,6 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 
 	nodesInList = extractMajorityPath(maxNode, scores);
 	produceTranscript(locus, nodesInList);
-	getTranscript(locus)->confidence =
-	    getTranscript(locus)->contigCount / (double) getContigCount(locus);
 	findHeaviestNonUsedNode(locus);
 }
 

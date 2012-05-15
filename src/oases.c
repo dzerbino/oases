@@ -349,7 +349,6 @@ int main(int argc, char **argv)
 	if (exportAlignments)
 		exportTranscriptMappings(loci, locusCount, graph, reads, minTransLength, directory);
 
-	cleanTranscriptMemory(loci, locusCount);
 	cleanLocusMemory(loci, locusCount);
 	destroyGraph(graph);
 	free(graphFilename);
