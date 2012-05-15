@@ -16,8 +16,9 @@
     You should have received a copy of the GNU General Public License
     along with Oases. If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef FILTERTRANSCRIPTS_H_
-#define FILTERTRASNCRIPTS_H_
+#ifndef _EXTRACTMERGEDTRANSCRIPTS_H_ 
+#define _EXTRACTMERGEDTRANSCRIPTS_H_
 
-void removeRedundantTranscripts(Graph * graph);
+Locus *reextractGraphLoci(Graph * graph, IDnum * locusCount);
+void recomputeTranscripts(Locus ** loci, IDnum * locusCount);
 #endif 

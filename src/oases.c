@@ -43,6 +43,7 @@
 #include "locus.h"
 #include "transcript.h"
 #include "filterTranscripts.h"
+#include "extractMergedTranscripts.h"
 #include "oasesExport.h"
 
 static int OASES_VERSION_NUMBER = 0;
