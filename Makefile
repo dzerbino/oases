@@ -3,8 +3,8 @@ CFLAGS = -Wall
 DEBUG = -g
 LIBS = -lm
 OPT = -O3
-MAXKMERLENGTH=64
-CATEGORIES=2
+export MAXKMERLENGTH = 64
+export CATEGORIES = 2
 DEF = -D MAXKMERLENGTH=$(MAXKMERLENGTH) -D CATEGORIES=$(CATEGORIES)
 VELVET_DIR=../velvet
 
@@ -29,7 +29,7 @@ ifdef SINGLE_COV_CAT
 override DEF := $(DEF) -D SINGLE_COV_CAT
 endif
 
-default : oases doc
+default : cleanobj velvet oases doc
 
 ifdef BUNDLEDZLIB
 Z_LIB_DIR=$(VELVET_DIR)/third-party/zlib-1.2.3
@@ -65,16 +65,16 @@ OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
 velvet :
-	cd $(VELVET_DIR) && make obj
+	cd $(VELVET_DIR) && make -e obj
 
 velvetdbg :
-	cd $(VELVET_DIR) && make obj/dbg
+	cd $(VELVET_DIR) && make -e obj/dbg
 
 velvet_de :
-	cd $(VELVET_DIR) && make obj_de
+	cd $(VELVET_DIR) && make -e obj_de
 
 velvetdbg_de :
-	cd $(VELVET_DIR) && make obj/dbg_de
+	cd $(VELVET_DIR) && make -e obj/dbg_de
 
 clean :
 	rm -f obj/*.o obj/dbg/*.o ./oases 
