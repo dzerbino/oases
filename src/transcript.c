@@ -43,19 +43,12 @@
 #define BLOCK_SIZE  100000
 #define LENGTHCUTOFF 50
 
-typedef enum event_type {
-	mutually_exclusive_exons,
-	skipped_exon,
-	alternative_5prime_splice,
-	alternative_3prime_splice,
-	intron_retention,
-	alternative_polyA,
-} EventType;
-
-struct event_st {
-	Node *nodes[4];
-	EventType type;
-	Event *next;
+struct transcript_st {
+	IDnum contigCount;
+	Node **contigs;
+	Coordinate *distances;
+	double confidence;
+	Transcript *next;
 };
 
 // Global params
@@ -64,7 +57,6 @@ static IDnum maxtrans = 10;
 
 // Global pointers
 static RecycleBin *transcriptMemory = NULL;
-static RecycleBin *eventMemory = NULL;
 
 // DEBUG
 static Node *heavyNode = NULL;
@@ -77,6 +69,20 @@ Transcript *allocateTranscript()
 		    newRecycleBin(sizeof(Transcript), BLOCK_SIZE);
 
 	return allocatePointer(transcriptMemory);
+}
+
+Transcript * newTranscript(IDnum contigCount, double confidence) {
+	Transcript * transcript = allocateTranscript();
+	transcript->contigs = callocOrExit(contigCount, Node *);
+	transcript->distances = callocOrExit(contigCount, Coordinate);
+	transcript->confidence = confidence;
+	return transcript;
+}
+
+void addContigToTranscript(Transcript * transcript, Node * node, Coordinate distance) {
+	transcript->contigs[transcript->contigCount++] = node;
+	if (transcript->contigCount > 1)
+		transcript->distances[transcript->contigCount - 1] = distance;
 }
 
 static boolean leftHandNeighboursVisited(Node * node)
@@ -118,17 +124,17 @@ static Node *findHeaviestNonUsedNode(Locus * locus)
 
 	setLocusStatus(locus, false);
 
-	for (transcript = locus->transcript; transcript;
+	for (transcript = getTranscript(locus); transcript;
 	     transcript = transcript->next)
 		for (index = 0; index < transcript->contigCount; index++)
 			setSingleNodeStatus(transcript->contigs[index],
 					    true);
 
-	for (index = 0; index < locus->contigCount; index++) {
-		if (!getNodeStatus(locus->contigs[index])
-		    && getTotalCoverageOases(locus->contigs[index]) > maxCov) {
-			maxCov = getTotalCoverageOases(locus->contigs[index]);
-			nextNode = locus->contigs[index];
+	for (index = 0; index < getContigCount(locus); index++) {
+		if (!getNodeStatus(getContig(locus, index))
+		    && getTotalCoverageOases(getContig(locus, index)) > maxCov) {
+			maxCov = getTotalCoverageOases(getContig(locus, index));
+			nextNode = getContig(locus, index);
 		}
 	}
 
@@ -390,17 +396,17 @@ static boolean createAlternativeDPStarts(Locus * locus)
 {
 	IDnum index;
 
-	for (index = 0; index < locus->contigCount; index++) {
+	for (index = 0; index < getContigCount(locus); index++) {
 		if (lookForPossibleAlternativeDPStartFromNode
-		    (locus->contigs[index], locus)) {
+		    (getContig(locus, index), locus)) {
 			renumberLocusNodes(locus);
 			return true;
 		}
 	}
 
-	for (index = 0; index < locus->contigCount; index++) {
+	for (index = 0; index < getContigCount(locus); index++) {
 		if (forcePossibleAlternativeDPStartFromNode
-		    (locus->contigs[index], locus)) {
+		    (getContig(locus, index), locus)) {
 			renumberLocusNodes(locus);
 			return true;
 		}
@@ -462,11 +468,7 @@ static void produceTranscript(Locus * locus, IDnum nodesInList)
 	IDnum index = 0;
 	Node *node;
 
-	Transcript *transcript = allocateTranscript();
-	transcript->contigCount = nodesInList;
-	transcript->contigs = callocOrExit(nodesInList, Node *);
-	transcript->distances = callocOrExit(nodesInList, Coordinate);
-	transcript->confidence = 1;
+	Transcript *transcript = newTranscript(nodesInList, 1);
 
 	while ((node = popNodeRecord())) {
 		transcript->contigs[index] = node;
@@ -482,8 +484,9 @@ static void produceTranscript(Locus * locus, IDnum nodesInList)
 		}
 		index++;
 	}
-	transcript->next = locus->transcript;
-	locus->transcript = transcript;
+	transcript->contigCount = index;
+
+	addTranscript(locus, transcript);
 }
 
 void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
@@ -492,22 +495,22 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 	Node *node;
 	double overallMaxScore = -1;
 	Node *maxNode = NULL;
-	IDnum nodesToVisit = locus->contigCount;
+	IDnum nodesToVisit = getContigCount(locus);
 	IDnum nodesInList;
 
 	// Clear node statuses:
 	// Record all nodes from which to start the DP
 	setLocusStatus(locus, true);
 
-	for (index = 0; index < locus->contigCount; index++) {
-		node = locus->contigs[index];
+	for (index = 0; index < getContigCount(locus); index++) {
+		node = getContig(locus, index);
 		if (getReverseMarkedConnection(node) == NULL)
 			recordNode(node);
 	}
 
 	// OK, let's name a volunteer...
 	if (!existsMarkedNode()) {
-		createAlternativeDPStartFromNode(locus->contigs[0], locus);
+		createAlternativeDPStartFromNode(getContig(locus, 0), locus);
 		computeHighestExpressedLocusTranscript(locus, scores);
 		return;
 	}
@@ -517,7 +520,7 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 		setSingleNodeStatus(node, 2);
 		nodesToVisit--;
 
-		computeDPScore(node, scores, locus->contigCount);
+		computeDPScore(node, scores, getContigCount(locus));
 		if (scores[getNodeID(node) + nodeCount(graph)] > overallMaxScore
 		    && (!heavyNode || node != getTwinNode(heavyNode))) {
 			overallMaxScore = scores[getNodeID(node) + nodeCount(graph)];
@@ -537,8 +540,8 @@ void computeHighestExpressedLocusTranscript(Locus * locus, double *scores)
 
 	nodesInList = extractMajorityPath(maxNode, scores);
 	produceTranscript(locus, nodesInList);
-	locus->transcript->confidence =
-	    locus->transcript->contigCount / (double) locus->contigCount;
+	getTranscript(locus)->confidence =
+	    getTranscript(locus)->contigCount / (double) getContigCount(locus);
 	findHeaviestNonUsedNode(locus);
 }
 
@@ -551,7 +554,7 @@ static IDnum explainedContigs(Locus * locus)
 
 	setLocusStatus(locus, false);
 
-	for (transcript = locus->transcript; transcript != NULL;
+	for (transcript = getTranscript(locus); transcript != NULL;
 	     transcript = transcript->next) {
 		for (index = 0; index < transcript->contigCount; index++) {
 			node = transcript->contigs[index];
@@ -562,21 +565,15 @@ static IDnum explainedContigs(Locus * locus)
 		}
 	}
 
-	//velvetLog("%li nodes explained out of %li\n", (long) counter, (long) locus->contigCount);
+	//velvetLog("%li nodes explained out of %li\n", (long) counter, (long) getContigCount(locus));
 
 	return counter;
 }
 
 static void makeTranscriptOfNode(Locus * locus, Node* node) {
-	Transcript *transcript = allocateTranscript();
-	transcript->contigCount = 1;
-	transcript->contigs = callocOrExit(1, Node *);
-	transcript->contigs[0] = node;
-	transcript->distances = callocOrExit(1, Coordinate);
-	//transcript->confidence = 1 / (double) locus->contigCount;
-	transcript->confidence = 1;
-	transcript->next = locus->transcript;
-	locus->transcript = transcript;
+	Transcript *transcript = newTranscript(1, 1);
+	addContigToTranscript(transcript, node, 0);
+	addTranscript(locus, transcript);
 }
 
 static void expressUnexplainedLongContigs(Locus * locus) {
@@ -588,7 +585,7 @@ static void expressUnexplainedLongContigs(Locus * locus) {
 	setLocusStatus(locus, false);
 
 	// Mark used contigs
-	for (transcript = locus->transcript; transcript != NULL;
+	for (transcript = getTranscript(locus); transcript != NULL;
 	     transcript = transcript->next) {
 		for (index = 0; index < transcript->contigCount; index++) {
 			node = transcript->contigs[index];
@@ -597,8 +594,8 @@ static void expressUnexplainedLongContigs(Locus * locus) {
 	}
 
 	// Find unused contigs
-	for (index = 0; index < locus->contigCount; index++) {
-		node = locus->contigs[index];
+	for (index = 0; index < getContigCount(locus); index++) {
+		node = getContig(locus, index);
 		if (!getNodeStatus(node))
 			makeTranscriptOfNode(locus, node);
 	}
@@ -615,7 +612,7 @@ static void computeHighlyExpressedLocusTranscripts(Locus * locus,
 	setLocusConnectionStatus(locus, true);
 
 	while (counter++ < maxtrans
-	       && explainedContigs(locus) < locus->contigCount)
+	       && explainedContigs(locus) < getContigCount(locus))
 		computeHighestExpressedLocusTranscript(locus, scores);
 
 	if (counter >= maxtrans)
@@ -637,29 +634,15 @@ void cleanTranscriptMemory(Locus * loci, IDnum locusCount)
 	Transcript *transcript;
 
 	for (index = 0; index < locusCount; index++) {
-		for (transcript = loci[index].transcript; transcript;
+		Locus * locus = getLocus(loci, index);
+		for (transcript = getTranscript(locus); transcript;
 		     transcript = transcript->next) {
 			free(transcript->contigs);
 			free(transcript->distances);
 		}
-		loci[index].transcript = NULL;
 	}
-
-}
-
-void cleanLocusMemory(Locus * loci, IDnum locusCount)
-{
-	IDnum index;
-
-	for (index = 0; index < locusCount; index++)
-		free(loci[index].contigs);
-	free(loci);
 	destroyRecycleBin(transcriptMemory);
-	destroyRecycleBin(eventMemory);
 	transcriptMemory = NULL;
-	eventMemory = NULL;
-	cleanScaffoldMemory();
-	cleanNodeListMemory();
 }
 
 static IDnum getDegree(Node * node)
@@ -713,8 +696,8 @@ static void getDegreeDistribution(Locus * locus, IDnum * distribution)
 	for (index = 0; index < 4; index++)
 		distribution[index] = 0;
 
-	for (index = 0; index < locus->contigCount; index++)
-		updateDistribution(distribution, locus->contigs[index]);
+	for (index = 0; index < getContigCount(locus); index++)
+		updateDistribution(distribution, getContig(locus, index));
 }
 
 #define UNKNOWN 0
@@ -756,9 +739,9 @@ static Node *findEndNodeInLocus(Locus * locus)
 {
 	IDnum index;
 
-	for (index = 0; index < locus->contigCount; index++)
-		if (hasNoActiveConnections(locus->contigs[index]))
-			return locus->contigs[index];
+	for (index = 0; index < getContigCount(locus); index++)
+		if (hasNoActiveConnections(getContig(locus, index)))
+			return getContig(locus, index);
 
 	return NULL;
 }
@@ -836,10 +819,10 @@ static Node *findSecondEndNodeInLocus(Locus * locus)
 	IDnum index;
 	boolean firstFound = false;
 
-	for (index = 0; index < locus->contigCount; index++) {
-		if (hasNoActiveConnections(locus->contigs[index])) {
+	for (index = 0; index < getContigCount(locus); index++) {
+		if (hasNoActiveConnections(getContig(locus, index))) {
 			if (firstFound)
-				return locus->contigs[index];
+				return getContig(locus, index);
 			else
 				firstFound = true;
 		}
@@ -900,7 +883,7 @@ void computeTranscripts(Graph * argGraph, Locus * loci, IDnum locusCount) {
 	prepareGraphForLocalCorrections2(graph);
 
 	for (index = 0; index < locusCount; index++) {
-		locus = &(loci[index]);
+		locus = getLocus(loci, index);
 		setLocusStatus(locus, true);
 		getDegreeDistribution(locus, distribution);
 		configuration = hasPlausibleTranscripts(distribution);
@@ -913,26 +896,26 @@ void computeTranscripts(Graph * argGraph, Locus * loci, IDnum locusCount) {
 	free(scores);
 }
 
-void detachShortReads(ReadSet * reads, int wordLength)
-{
-	IDnum index;
-	IDnum pairID;
-	IDnum sequenceCount = reads->readCount;
-	IDnum *mateReads = reads->mateReads;
+void setNextTranscript(Transcript * transcript, Transcript * next) {
+	transcript->next = next;
+}
 
-	if (mateReads == NULL)
-		return;
+Transcript * getNextTranscript(Transcript * transcript) {
+	return transcript->next;
+}
 
-	for (index = 0; index < sequenceCount; index++) {
-		if (getLength(getTightStringInArray(reads->tSequences, index)) >= wordLength || reads->categories[index] % 2 == 0 )
-			continue;
+IDnum getTranscriptContigCount(Transcript * transcript) {
+	return transcript->contigCount;
+}
 
-		if (isSecondInPair(reads, index))
-		    pairID = index - 1;
-		else
-		    pairID = index + 1;
+Node * getTranscriptContig(Transcript * transcript, IDnum index) {
+	return transcript->contigs[index];
+}
 
-		reads->categories[index] = (reads->categories[index] / 2) * 2;
-		reads->categories[pairID] = (reads->categories[pairID] / 2) * 2;
-	}
+Coordinate getTranscriptDistance(Transcript * transcript, IDnum index) {
+	return transcript->distances[index];
+}
+
+double getConfidence(Transcript * transcript) {
+	return transcript->confidence;
 }

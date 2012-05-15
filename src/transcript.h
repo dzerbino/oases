@@ -19,19 +19,25 @@
 #ifndef _TRANSCRIPT_H_
 #define _TRANSCRIPT_H_
 
+typedef struct transcript_st Transcript;
+
 #include "locus.h"
 
+Transcript * newTranscript(IDnum contigCount, double confidence);
+void addContigToTranscript(Transcript * transcript, Node * node, Coordinate distance);
+
+// Getter/Setter
+Transcript * getNextTranscript(Transcript * transcript);
+void setNextTranscript(Transcript * transcript, Transcript * next);
+IDnum getTranscriptContigCount(Transcript * transcript);
+Node * getTranscriptContig(Transcript * transcript, IDnum index);
+Coordinate getTranscriptDistance(Transcript * transcript, IDnum index);
+double getConfidence(Transcript * transcript);
+
+// Computation
 void computeTranscripts(Graph * graph, Locus * loci, IDnum locusCount);
 
-void removeIndirectConnections();
+// Utility
 void cleanTranscriptMemory(Locus * loci, IDnum locusCount);
 void cleanLocusMemory(Locus * loci, IDnum locusCount);
-
-ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
-			    int wordLength);
-
-void exportLocusGraph(FILE * outfile, IDnum index, Locus * loci);
-
-void detachShortReads(ReadSet * reads, int wordLength);
-Transcript * allocateTranscript();
 #endif

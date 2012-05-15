@@ -27,6 +27,7 @@
 #include "passageMarker.h"
 #include "readSet.h"
 #include "locallyCorrectedGraph.h"
+#include "tightString.h"
 #include "transcript.h"
 
 #define ADENINE 0
@@ -1378,4 +1379,49 @@ void cleanScaffoldMemory()
 
 IDnum getConnectionPairedCount(Connection * connect) {
 	return connect->paired_count;
+}
+
+static void removeIndirectConnectionsAtIndex(IDnum index)
+{
+	Connection *connect = getConnection(getNodeInGraph(graph, index));
+	Connection *next;
+
+	while (connect) {
+		next = getNextConnection(connect);
+		if (getConnectionDirectCount(connect) == 0)
+			destroyConnection(connect, index);
+		connect = next;
+	}
+}
+
+void removeIndirectConnections()
+{
+	IDnum index;
+
+	for (index = -nodeCount(graph); index <= nodeCount(graph); index++)
+		removeIndirectConnectionsAtIndex(index);
+}
+
+void detachShortReads(ReadSet * reads, int wordLength)
+{
+	IDnum index;
+	IDnum pairID;
+	IDnum sequenceCount = reads->readCount;
+	IDnum *mateReads = reads->mateReads;
+
+	if (mateReads == NULL)
+		return;
+
+	for (index = 0; index < sequenceCount; index++) {
+		if (getLength(getTightStringInArray(reads->tSequences, index)) >= wordLength || reads->categories[index] % 2 == 0 )
+			continue;
+
+		if (isSecondInPair(reads, index))
+		    pairID = index - 1;
+		else
+		    pairID = index + 1;
+
+		reads->categories[index] = (reads->categories[index] / 2) * 2;
+		reads->categories[pairID] = (reads->categories[pairID] / 2) * 2;
+	}
 }

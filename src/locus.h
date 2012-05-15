@@ -19,33 +19,26 @@
 #ifndef _LOCUS_H_
 #define _LOCUS_H_
 
-#include "scaffold.h"
-
 typedef struct locus_st Locus;
-typedef struct transcript_st Transcript;
-typedef struct event_st Event;
 
-struct locus_st {
-	IDnum contigCount;
-	IDnum longContigCount;
-	Node **contigs;
-	Transcript *transcript;
-	Event *event;
-};
-
-struct transcript_st {
-	IDnum contigCount;
-	Node **contigs;
-	Coordinate *distances;
-	double confidence;
-	Transcript *next;
-};
+#include "scaffold.h"
+#include "transcript.h"
 
 Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
 			boolean * dubious, ShortLength * lengths,
 			IDnum * locusCount, boolean scaffolding);
 
 Connection *getReverseActiveConnection(Node * node);
+
+// Getters and setters
+Transcript * getTranscript(Locus * locus);
+void addTranscript(Locus * locus, Transcript * transcript);
+IDnum getContigCount(Locus *locus);
+void setContigCount(Locus *locus, IDnum count);
+IDnum getLongContigCount(Locus *locus);
+void setLongContigCount(Locus *locus, IDnum count);
+Node * getContig(Locus * locus, IDnum index);
+void addContig(Locus * locus, Node * contig);
 
 // Modifying on the fly
 void simplifyFromNode(Node * node, Locus * locus);
@@ -59,4 +52,13 @@ void setUnreliableConnectionCutoff_oases(int val);
 void setDegreeCutoff(int val);
 void setPairedThreshold(double pairedThreshold);
 
+// Debugging
+void exportLocusGraph(FILE * outfile, IDnum index, Locus * loci);
+
+// Utility
+Locus * allocateLocusArray(IDnum size);
+Locus * reallocateLocusArray(Locus * array, IDnum newsize);
+void clearLocus(Locus * locus);
+void cleanLocusMemory(Locus * loci, IDnum locusCount);
+Locus * getLocus(Locus * loci, IDnum index);
 #endif

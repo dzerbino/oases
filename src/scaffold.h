@@ -21,29 +21,36 @@
 
 typedef struct connection_st Connection;
 
+// Construction and simplification
 void buildScaffold(Graph * graph, ReadSet * reads, boolean * dubious,
 		   ShortLength * lengths, boolean scaffolding);
 void transitiveReduction();
+void removeIndirectConnections();
+void detachShortReads(ReadSet * reads, int wordLength);
 
+// Getters and setters
 Connection *getConnection(Node * node);
 Connection *getConnectionBetweenNodes(Node * nodeA, Node * nodeB);
 Connection *getNextConnection(Connection * connect);
-
 boolean getConnectionStatus(Connection * connect);
 void setConnectionStatus(Connection * connect, boolean status);
 Node *getConnectionDestination(Connection * connect);
-void incrementConnectionWeight(Connection * connect, double weight);
 double getConnectionWeight(Connection * connect);
 void setConnectionWeight(Connection * connect, double weight);
+void incrementConnectionWeight(Connection * connect, double weight);
 Coordinate getConnectionDistance(Connection * connect);
 IDnum getConnectionDirectCount(Connection * connect);
 IDnum getConnectionPairedCount(Connection * connect);
 
+// Debugging
 void printOasesConnections(Category * cats);
+
+// Constant params for filtering
 void scaffold_setPairedThreshold(double pairedThreshold);
 void scaffold_setUnreliableConnectionCutoff(int val);
 void scaffold_setDegreeCutoff(int val);
 
+// Utility
 void destroyConnection(Connection * connect, IDnum index);
 void cleanScaffoldMemory();
 void defineUniqueNodes(Graph * graph);

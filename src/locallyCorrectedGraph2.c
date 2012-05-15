@@ -27,11 +27,9 @@ Copyright 2007, 2008 Daniel Zerbino (zerbino@ebi.ac.uk)
 #include "dfibHeap.h"
 #include "recycleBin.h"
 #include "passageMarker.h"
-#include "transcript.h"
 #include "locallyCorrectedGraph.h"
 #include "utility.h"
-#include "scaffold.h"
-#include "transcript.h"
+#include "locus.h"
 
 static const Time INDEL = 0;
 static const Time SIM[4][4] = {
@@ -461,8 +459,8 @@ void correctGraphLocally2(Node * argStart, Locus * locus)
 	start = argStart;
 	//printf("Correcting graph from node %li\n", getNodeID(start));
 
-	for (index = 0; index < locus->contigCount; index++) {
-		nodeIndex = getNodeID(locus->contigs[index]) + nodeCount(graph);
+	for (index = 0; index < getContigCount(locus); index++) {
+		nodeIndex = getNodeID(getContig(locus, index)) + nodeCount(graph);
 		times[nodeIndex] = -1;
 		dheapNodes[nodeIndex] = NULL;
 		previous[nodeIndex] = NULL;

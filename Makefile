@@ -29,7 +29,7 @@ ifdef SINGLE_COV_CAT
 override DEF := $(DEF) -D SINGLE_COV_CAT
 endif
 
-default: oases
+default : oases doc
 
 ifdef BUNDLEDZLIB
 Z_LIB_DIR=$(VELVET_DIR)/third-party/zlib-1.2.3
@@ -64,8 +64,6 @@ VELVET_DBG_FILES = $(VELVET_OBJ:%=$(VELVET_DIR)/obj/dbg/%.o)
 OBJ = obj/oases.o obj/transcript.o obj/scaffold.o obj/locallyCorrectedGraph2.o obj/correctedGraph.o obj/filterTranscripts.o obj/locus.o obj/nodeList.o obj/oasesExport.o
 OBJDBG = $(subst obj,obj/dbg,$(OBJ))
 
-default : oases doc
-
 velvet :
 	cd $(VELVET_DIR) && make obj
 
@@ -91,7 +89,7 @@ doc: OasesManual.pdf
 OasesManual.pdf: doc/manual/OasesManual.tex
 	cd doc; make
 
-oases : cleanobj velvet obj $(OBJ) 
+oases : obj $(OBJ) 
 	$(CC) $(CFLAGS) $(OPT) $(LDFLAGS) -o oases $(OBJ) $(VELVET_FILES) $(Z_LIB_FILES) $(LIBS)
 
 

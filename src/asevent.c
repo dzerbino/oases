@@ -1,24 +1,36 @@
+/*
+    Copyright 2009,2010 Daniel Zerbino (dzerbino@soe.ucsc.edu)
 
-static void removeIndirectConnectionsAtIndex(IDnum index)
-{
-	Connection *connect = getConnection(getNodeInGraph(graph, index));
-	Connection *next;
+    This file is part of Oases.
 
-	while (connect) {
-		next = getNextConnection(connect);
-		if (getConnectionDirectCount(connect) == 0)
-			destroyConnection(connect, index);
-		connect = next;
-	}
-}
+    Oases is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
-void removeIndirectConnections()
-{
-	IDnum index;
+    Oases is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-	for (index = -nodeCount(graph); index <= nodeCount(graph); index++)
-		removeIndirectConnectionsAtIndex(index);
-}
+    You should have received a copy of the GNU General Public License
+    along with Oases. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+typedef enum event_type {
+	mutually_exclusive_exons,
+	skipped_exon,
+	alternative_5prime_splice,
+	alternative_3prime_splice,
+	intron_retention,
+	alternative_polyA,
+} EventType;
+
+struct event_st {
+	Node *nodes[4];
+	EventType type;
+	struct event_st *next;
+};
 
 static Event *allocateEvent()
 {

@@ -1933,7 +1933,7 @@ static void cleanUpRedundancy()
 		if (isTerminal(slowMarker))
 			slowLength = finalLength;
 		else if (getPassageMarkerFinish(slowMarker) == 0) {
-			slowLength = 0
+			slowLength = 0;
 			if (slowLength < slowConstraint)
 				slowLength = slowConstraint;
 		} else {

@@ -1,3 +1,21 @@
+/*
+    Copyright 2009,2010 Daniel Zerbino (dzerbino@soe.ucsc.edu)
+
+    This file is part of Oases.
+
+    Oases is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Oases is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Oases. If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -302,8 +320,8 @@ static void extendComponent(Locus * locus)
 {
 	IDnum index;
 
-	for (index = 0; index < locus->longContigCount; index++)
-		extendComponentFromNode(locus->contigs[index]);
+	for (index = 0; index < getLongContigCount(locus); index++)
+		extendComponentFromNode(getContig(locus, index));
 }
 
 static void fillUpComponent(Node * node)
@@ -337,7 +355,7 @@ static IDnum countMarkedNodes()
 
 static Locus *extractConnectedComponents(IDnum locusCount)
 {
-	Locus *loci = callocOrExit(locusCount, Locus);
+	Locus *loci = allocateLocusArray(locusCount);
 	Locus *locus;
 	IDnum index;
 	IDnum locusIndex = 0;
@@ -349,40 +367,30 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 	for (index = 1; index <= nodeCount(graph); index++) {
 		node = getNodeInGraph(graph, index);
 		if (!getNodeStatus(node) && getUniqueness(node)) {
-			nodeIndex = 0;
-			locus = &(loci[locusIndex++]);
+			locus = getLocus(loci, locusIndex++);
 
 			// Long contigs
 			fillUpComponent(node);
-			locus->longContigCount = countMarkedNodes();
-			locus->contigs =
-			    callocOrExit(locus->longContigCount, Node *);
+			setLongContigCount(locus, countMarkedNodes());
 			while (markedNodes) 
-				locus->contigs[nodeIndex++] =
-				    popNodeRecord();
+				addContig(locus, popNodeRecord());
 
 			// Secondary contigs
 			extendComponent(locus);
-			locus->contigCount =
-			    locus->longContigCount + countMarkedNodes();
-			locus->contigs =
-			    reallocOrExit(locus->contigs,
-					  locus->contigCount, Node *);
+			setContigCount(locus, getLongContigCount(locus) + countMarkedNodes());
 			while (markedNodes)
-				locus->contigs[nodeIndex++] =
-				    popNodeRecord();
+				addContig(locus, popNodeRecord());
+
 			// Mark primary nodes so that their twins are not reused
 			for (nodeIndex = 0;
-			     nodeIndex < locus->longContigCount;
+			     nodeIndex < getLongContigCount(locus);
 			     nodeIndex++)
-				setNodeStatus(locus->contigs[nodeIndex],
-					      true);
+				setNodeStatus(getContig(locus, nodeIndex), true);
 
 			// Unmark secondary nodes so that they are available to other loci
-			for (nodeIndex = locus->longContigCount;
-			     nodeIndex < locus->contigCount; nodeIndex++)
-				setNodeStatus(locus->contigs[nodeIndex],
-					      false);
+			for (nodeIndex = getLongContigCount(locus);
+			     nodeIndex < getContigCount(locus); nodeIndex++)
+				setNodeStatus(getContig(locus, nodeIndex), false);
 		}
 	}
 
@@ -417,23 +425,14 @@ static IDnum listTranscriptNodes(PassageMarkerI marker) {
 
 static void produceTranscript(Locus * locus, IDnum nodesInList)
 {
-	IDnum index = 0;
 	Node *node;
 
-	Transcript *transcript = allocateTranscript();
-	transcript->contigCount = nodesInList;
-	transcript->contigs = callocOrExit(nodesInList, Node *);
-	transcript->distances = callocOrExit(nodesInList, Coordinate);
-	transcript->confidence = nodesInList / locus->contigCount;
+	Transcript *transcript = newTranscript(nodesInList, ((double) nodesInList) / getContigCount(locus));
 
-	while ((node = popNodeRecord())) {
-		transcript->contigs[index] = node;
-		if (index > 0)
-		    transcript->distances[index - 1] = 0;
-		index++;
-	}
-	transcript->next = locus->transcript;
-	locus->transcript = transcript;
+	while ((node = popNodeRecord())) 
+		addContigToTranscript(transcript, node, 0);
+
+	addTranscript(locus, transcript);
 }
 
 static void addTranscriptToLocus_Marker(Locus * locus, PassageMarkerI marker) {
@@ -456,7 +455,7 @@ static void addTranscriptToLocus_Marker(Locus * locus, PassageMarkerI marker) {
 static void addTranscriptToLocus_Node(Locus * locus, IDnum index) {
 	PassageMarkerI marker;
 
-	for (marker = getMarker(locus->contigs[index]); marker; marker = getNextInNode(marker))
+	for (marker = getMarker(getContig(locus, index)); marker; marker = getNextInNode(marker))
 		addTranscriptToLocus_Marker(locus, marker);
 }
 
@@ -464,7 +463,7 @@ static void addTranscriptToLocus(Locus * locus)
 {
 	IDnum index;
 
-	for (index = 0; index < locus->contigCount; index++)
+	for (index = 0; index < getContigCount(locus); index++)
 		addTranscriptToLocus_Node(locus, index);
 }
 
@@ -486,9 +485,7 @@ static void addOrphanedTranscriptToLoci(Locus * locus, PassageMarkerI marker) {
 	IDnum length = 0;
 	IDnum counter = 0;
 
-	locus->longContigCount = 0;
-	locus->event = NULL;	
-	locus->transcript = NULL;
+	clearLocus(locus);
 
 	// Go to start of sequence
 	for (start = marker; getPreviousInSequence(start); start = getPreviousInSequence(start))
@@ -507,19 +504,17 @@ static void addOrphanedTranscriptToLoci(Locus * locus, PassageMarkerI marker) {
 	qsort(nodes, length, sizeof(Node *), compareNodes);
 	
 	// Count single occurences
-	locus->contigCount = 1;
+	counter = 1;
 	for (index = 1; index < length; index++)
 		if (nodes[index] != nodes[index - 1])
-			locus->contigCount++;	
+			counter++;	
 
-	counter = locus->contigCount;
 	// Fill nodes array
-	locus->contigs = callocOrExit(locus->contigCount, Node *);
-	locus->contigs[0] = nodes[0];
-	locus->contigCount = 1;	
+	setContigCount(locus, counter);
+	addContig(locus, nodes[0]);
 	for (index = 1; index < length; index++)
 		if (nodes[index] != nodes[index - 1])
-			locus->contigs[locus->contigCount++] = nodes[index];
+			addContig(locus, nodes[index]);
 
 	addTranscriptToLocus_Marker(locus, marker);
 	free(nodes);
@@ -537,7 +532,7 @@ void recomputeTranscripts(Locus ** loci, IDnum * locusCount) {
 	resetPassageMarkerStatuses(graph);
 
 	for (index = 0; index < *locusCount; index++) {
-		locus = &((*loci)[index]);
+		locus = getLocus(*loci, index);
 		addTranscriptToLocus(locus);
 	}
 
@@ -559,12 +554,12 @@ void recomputeTranscripts(Locus ** loci, IDnum * locusCount) {
 
 	velvetLog("Found %li missing transcripts\n", (long) counter);
 
-	*loci = reallocOrExit(*loci, *locusCount + counter, Locus);
+	*loci = reallocateLocusArray(*loci, *locusCount + counter);
 
 	for (index = 1; index <= nodeCount(graph); index++) {
 		for (marker = getMarker(getNodeInGraph(graph, index)); marker; marker = getNextInNode(marker)) {
 			if (!getPassageMarkerStatus(marker) && !markedTranscripts[getAbsolutePassMarkerSeqID(marker)]) {
-				addOrphanedTranscriptToLoci( (*loci) + ((*locusCount)++), marker);
+				addOrphanedTranscriptToLoci( getLocus(*loci, (*locusCount)++), marker);
 				markedTranscripts[getAbsolutePassMarkerSeqID(marker)] = true;
 			}
 		}

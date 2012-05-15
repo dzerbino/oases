@@ -26,4 +26,7 @@ IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci
 void exportAMOSTranscripts(Graph * graph, Locus * loci, IDnum locusCount, ReadSet * reads, Coordinate minTransLength, char * directory);
 void exportTranscriptMappings(Locus * loci, IDnum locusCount, Graph * graph, ReadSet * reads, Coordinate minLength, char * directory);
 
+ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
+			    int wordLength);
+
 #endif

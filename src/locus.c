@@ -28,12 +28,11 @@
 #include "passageMarker.h"
 #include "readSet.h"
 #include "locallyCorrectedGraph.h"
-#include "locallyCorrectedGraph2.h"
-#include "scaffold.h"
 #include "concatenatedGraph.h"
 #include "tightString.h"
-#include "transcript.h"
 #include "nodeList.h"
+#include "locus.h"
+#include "locallyCorrectedGraph2.h"
 
 #define ADENINE 0
 #define CYTOSINE 1
@@ -44,6 +43,13 @@
 #define LENGTHCUTOFF 50
 
 static Graph *graph = NULL;
+
+struct locus_st {
+	IDnum contigCount;
+	IDnum longContigCount;
+	Node **contigs;
+	Transcript *transcript;
+};
 
 static void setNodeConnectionStatus(Node * node, boolean status)
 {
@@ -453,3 +459,142 @@ void setDegreeCutoff(int val) {
 void setPairedThreshold(double pairedThreshold) {
 	scaffold_setPairedThreshold(pairedThreshold);
 }
+
+Transcript * getTranscript(Locus * locus) {
+	return locus->transcript;
+}
+
+void addTranscript(Locus * locus, Transcript * transcript) {
+	setNextTranscript(transcript, locus->transcript);
+	locus->transcript = transcript;
+}
+
+IDnum getContigCount(Locus *locus) {
+	return locus->contigCount;
+}
+
+void setContigCount(Locus *locus, IDnum count) {
+	locus->contigCount = count;
+	locus->contigs = reallocOrExit(locus->contigs, count, Node *);
+}
+
+IDnum getLongContigCount(Locus *locus) {
+	return locus->contigCount;
+}
+
+void setLongContigCount(Locus *locus, IDnum count) {
+	locus->longContigCount = count;
+	locus->contigs = callocOrExit(count, Node *);
+}
+
+Node * getContig(Locus * locus, IDnum index) {
+	return locus->contigs[index];
+}
+
+void addContig(Locus * locus, Node * contig) {
+	locus->contigs[locus->contigCount++] = contig;
+}
+
+void cleanLocusMemory(Locus * loci, IDnum locusCount)
+{
+	IDnum index;
+
+	cleanTranscriptMemory(loci, locusCount);
+	for (index = 0; index < locusCount; index++)
+		free(loci[index].contigs);
+	free(loci);
+	cleanScaffoldMemory();
+	cleanNodeListMemory();
+}
+
+void clearLocus(Locus * locus) {
+	locus->longContigCount = 0;
+	locus->transcript = NULL;
+}
+
+Locus * getLocus(Locus * loci, IDnum index) {
+	return loci + index;
+}
+
+Locus * allocateLocusArray(IDnum size) {
+	return callocOrExit(size, Locus);
+}
+
+Locus * reallocateLocusArray(Locus * locus, IDnum size) {
+	return reallocOrExit(locus, size, Locus);
+}
+
+void exportLocusGraph(FILE * file, IDnum index, Locus * loci)
+{
+	Locus *locus = getLocus(loci, index);
+	IDnum i;
+	long long nodeID;
+	Connection *connect;
+	Node *node;
+
+	resetNodeStatus(graph);
+	setLocusStatus(locus, true);
+
+	fprintf(file, "digraph graph_%lli {\n", (long long) index);
+
+	fprintf(file, "rankdir=LR\n");
+	fprintf(file, "style=invis\n");
+	fprintf(file, "node [shape=point]\n");
+	fprintf(file, "edge [style=bold, color=red]\n");
+	for (i = 0; i < getLongContigCount(locus); i++) {
+		nodeID = (long long) getNodeID(getContig(locus, i));
+		if (nodeID > 0)
+			fprintf(file, "subgraph cluster%li {\n",
+				(long) nodeID);
+		else
+			fprintf(file, "subgraph cluster0%li {\n",
+				(long) -nodeID);
+		fprintf(file, "%lli -> %lli [label=%lli]\n", nodeID,
+			-nodeID, nodeID);
+		fprintf(file, "}\n");
+	}
+
+	fprintf(file, "edge [color=black]\n");
+	for (i = getLongContigCount(locus); i < getContigCount(locus); i++) {
+		nodeID = (long long) getNodeID(getContig(locus, i));
+		if (nodeID > 0)
+			fprintf(file, "subgraph cluster%li {\n",
+				(long) nodeID);
+		else
+			fprintf(file, "subgraph cluster0%li {\n",
+				(long) -nodeID);
+		fprintf(file, "%lli -> %lli [label=%lli]\n", nodeID,
+			-nodeID, nodeID);
+		fprintf(file, "}\n");
+	}
+
+	fprintf(file, "edge [style=normal]\n");
+	for (i = 0; i < getContigCount(locus); i++) {
+		node = getContig(locus, i);
+		nodeID = getNodeID(node);
+
+		for (connect = getConnection(node); connect != NULL;
+		     connect = getNextConnection(connect))
+			if (getNodeStatus
+			    (getTwinNode
+			     (getConnectionDestination(connect)))) {
+				fprintf(file, "%lli -> %lli [label=%lli_%li_%li",
+					-nodeID,
+					(long long)
+					-getNodeID(getConnectionDestination
+						   (connect)),
+					(long long)
+					getConnectionDistance(connect),
+					(long) getConnectionPairedCount(connect),
+					(long) getConnectionDirectCount(connect));
+				if (!getConnectionStatus(connect))
+					fprintf(file, "XXX");
+				fprintf(file, "]\n");
+			}
+	}
+
+	fprintf(file, "}\n");
+
+	setLocusStatus(locus, false);
+}
+

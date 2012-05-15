@@ -80,8 +80,8 @@ static void exportLocusNodes(IDnum locusIndex, Locus * locus,
 {
 	IDnum index;
 
-	for (index = 0; index < locus->contigCount; index++)
-		exportLocusNode(locusIndex, locus->contigs[index],
+	for (index = 0; index < getContigCount(locus); index++)
+		exportLocusNode(locusIndex, getContig(locus, index),
 				outfile);
 }
 
@@ -89,20 +89,20 @@ static Coordinate getTranscriptLength(Transcript * transcript) {
 	IDnum index;
 	Coordinate totalLength = 0;
 
-	if (transcript->contigCount == 0)
+	if (getTranscriptContigCount(transcript) == 0)
 		return 0;
 
 	totalLength = getWordLength(graph) - 1;
 
-	for (index = 0; index < transcript->contigCount; index++) {
-		totalLength += getNodeLength(transcript->contigs[index]);
-		if (index < transcript->contigCount - 1) {
-			if (transcript->distances[index] < getWordLength(graph) && getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
-				totalLength += transcript->distances[index];
-			} else if (transcript->distances[index] > 0 && transcript->distances[index] < 10) {
+	for (index = 0; index < getTranscriptContigCount(transcript); index++) {
+		totalLength += getNodeLength(getTranscriptContig(transcript, index));
+		if (index < getTranscriptContigCount(transcript) - 1) {
+			if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1) {
+				totalLength += getTranscriptDistance(transcript, index);
+			} else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10) {
 				totalLength += 10;
 			} else {
-				totalLength += transcript->distances[index];
+				totalLength += getTranscriptDistance(transcript, index);
 			}
 		}
 	}
@@ -117,32 +117,32 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 	IDnum index;
 	Coordinate totalLength = 0;
 
-	if (transcript->contigCount == 0)
+	if (getTranscriptContigCount(transcript) == 0)
 		return;
 
 	// Header
 	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
-		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) getTranscriptLength(transcript));
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, getConfidence(transcript), (long) getTranscriptLength(transcript));
 
 	totalLength = getWordLength(graph) - 1;
 
 	// Sequence
-	for (index = 0; index < transcript->contigCount; index++) {
-		totalLength += getNodeLength(transcript->contigs[index]);
+	for (index = 0; index < getTranscriptContigCount(transcript); index++) {
+		totalLength += getNodeLength(getTranscriptContig(transcript, index));
 		fprintf(outfile, "%li:%lli",
-			(long) getNodeID(transcript->contigs[index]),
+			(long) getNodeID(getTranscriptContig(transcript, index)),
 			(long long) totalLength);
-		if (index < transcript->contigCount - 1) {
-			if (transcript->distances[index] < getWordLength(graph) && getNodeLength(transcript->contigs[index+1]) >= getWordLength(graph) - 1) {
+		if (index < getTranscriptContigCount(transcript) - 1) {
+			if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1) {
 				fprintf(outfile, "-(0)->");
-				totalLength += transcript->distances[index];
-			} else if (transcript->distances[index] > 0 && transcript->distances[index] < 10) {
+				totalLength += getTranscriptDistance(transcript, index);
+			} else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10) {
 				fprintf(outfile, "-(10)->");
 				totalLength += 10;
 			} else {
 				fprintf(outfile, "-(%li)->",
-					(long) transcript->distances[index]);
-				totalLength += transcript->distances[index];
+					(long) getTranscriptDistance(transcript, index));
+				totalLength += getTranscriptDistance(transcript, index);
 			}
 		}
 	}
@@ -157,14 +157,14 @@ static void exportLocusContigs(IDnum locusID, Locus * locus,
 	Transcript *transcript;
 	IDnum transcriptCount = 0;
 
-	for (transcript = locus->transcript; transcript != NULL;
-	     transcript = transcript->next)
+	for (transcript = getTranscript(locus); transcript != NULL;
+	     transcript = getNextTranscript(transcript))
 		if (getTranscriptLength(transcript) >= minTransLength)
 			transcriptCount++;
 
 	exportLocusNodes(locusID, locus, outfile);
-	for (transcript = locus->transcript; transcript != NULL;
-	     transcript = transcript->next)
+	for (transcript = getTranscript(locus); transcript != NULL;
+	     transcript = getNextTranscript(transcript))
 		if (getTranscriptLength(transcript) >= minTransLength)
 			exportTranscriptContigs(transcript, locusID, index++, transcriptCount,
 						outfile);
@@ -183,84 +183,10 @@ void exportContigOrders(Locus * loci, IDnum locusCount, char *filename, Coordina
 			   filename);
 
 	for (index = 0; index < locusCount; index++)
-		exportLocusContigs(index, &(loci[index]), outfile, minTransLength);
+		exportLocusContigs(index, getLocus(loci, index), outfile, minTransLength);
 
 	fclose(outfile);
 
-}
-
-void exportLocusGraph(FILE * file, IDnum index, Locus * loci)
-{
-	Locus *locus = &loci[index];
-	IDnum i;
-	long long nodeID;
-	Connection *connect;
-	Node *node;
-
-	resetNodeStatus(graph);
-	setLocusStatus(locus, true);
-
-	fprintf(file, "digraph graph_%lli {\n", (long long) index);
-
-	fprintf(file, "rankdir=LR\n");
-	fprintf(file, "style=invis\n");
-	fprintf(file, "node [shape=point]\n");
-	fprintf(file, "edge [style=bold, color=red]\n");
-	for (i = 0; i < locus->longContigCount; i++) {
-		nodeID = (long long) getNodeID(locus->contigs[i]);
-		if (nodeID > 0)
-			fprintf(file, "subgraph cluster%li {\n",
-				(long) nodeID);
-		else
-			fprintf(file, "subgraph cluster0%li {\n",
-				(long) -nodeID);
-		fprintf(file, "%lli -> %lli [label=%lli]\n", nodeID,
-			-nodeID, nodeID);
-		fprintf(file, "}\n");
-	}
-
-	fprintf(file, "edge [color=black]\n");
-	for (i = locus->longContigCount; i < locus->contigCount; i++) {
-		nodeID = (long long) getNodeID(locus->contigs[i]);
-		if (nodeID > 0)
-			fprintf(file, "subgraph cluster%li {\n",
-				(long) nodeID);
-		else
-			fprintf(file, "subgraph cluster0%li {\n",
-				(long) -nodeID);
-		fprintf(file, "%lli -> %lli [label=%lli]\n", nodeID,
-			-nodeID, nodeID);
-		fprintf(file, "}\n");
-	}
-
-	fprintf(file, "edge [style=normal]\n");
-	for (i = 0; i < locus->contigCount; i++) {
-		node = locus->contigs[i];
-		nodeID = getNodeID(node);
-
-		for (connect = getConnection(node); connect != NULL;
-		     connect = getNextConnection(connect))
-			if (getNodeStatus
-			    (getTwinNode
-			     (getConnectionDestination(connect)))) {
-				fprintf(file, "%lli -> %lli [label=%lli_%li_%li",
-					-nodeID,
-					(long long)
-					-getNodeID(getConnectionDestination
-						   (connect)),
-					(long long)
-					getConnectionDistance(connect),
-					(long) getConnectionPairedCount(connect),
-					(long) getConnectionDirectCount(connect));
-				if (!getConnectionStatus(connect))
-					fprintf(file, "XXX");
-				fprintf(file, "]\n");
-			}
-	}
-
-	fprintf(file, "}\n");
-
-	setLocusStatus(locus, false);
 }
 
 ReadSet *importEmptyReadSet(char *filename, Coordinate ** lengthsPtr,
@@ -450,7 +376,7 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 
 	fprintf(outfile, "seq:\n");
 	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++) {
-		node = transcript->contigs[nodeIndex];
+		node = getTranscriptContig(transcript, nodeIndex);
 		
 		// If first unique met, print initial k-mer
 		if (!firstUniqueMet && getNodeLength(node) >= wordShift) {
@@ -557,7 +483,7 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 
 	firstUniqueMet = -1;
 	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++) {
-		node = transcript->contigs[nodeIndex];
+		node = getTranscriptContig(transcript, nodeIndex);
 		if (firstUniqueMet == 0)
 			firstUniqueMet = 1;
 		else if (firstUniqueMet == -1 && getNodeLength(node) >= wordShift) 
@@ -615,13 +541,13 @@ static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * tr
 	Node * node;
 
 	contigLength = 0;
-	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++) {
-		node = transcript->contigs[nodeIndex];
+	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++) {
+		node = getTranscriptContig(transcript, nodeIndex);
 		contigLength += getNodeLength(node);
 		if (getNodeLength(node) >= wordShift)
 			uniqueBunch = true;
 
-		if (nodeIndex == transcript->contigCount - 1 || transcript->distances[nodeIndex] > 0) {
+		if (nodeIndex == getTranscriptContigCount(transcript) - 1 || getTranscriptDistance(transcript, nodeIndex) > 0) {
 			if (contigLength > 0) {
 				exportAMOSContig(outfile, reads, transcript, startIndex, nodeIndex, graph, 
 							 locusID, transcriptID, smallIndex++, iid++);
@@ -638,13 +564,13 @@ static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * tr
 	uniqueBunch = false;
 	start = 0;
 	contigLength = 0;
-	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++) {
-		node = transcript->contigs[nodeIndex];
+	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++) {
+		node = getTranscriptContig(transcript, nodeIndex);
 		contigLength += getNodeLength(node);
 		if (getNodeLength(node) >= wordShift)
 			uniqueBunch = true;
 
-		if (nodeIndex == transcript->contigCount - 1 || transcript->distances[nodeIndex] > 0) {
+		if (nodeIndex == getTranscriptContigCount(transcript) - 1 || getTranscriptDistance(transcript, nodeIndex) > 0) {
 			if (contigLength > 0) {
 				if (uniqueBunch)
 					contigLength += wordShift;
@@ -656,7 +582,7 @@ static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * tr
 				fprintf(outfile, "}\n");
 			}
 			start += contigLength;
-			start += transcript->distances[nodeIndex];
+			start += getTranscriptDistance(transcript, nodeIndex);
 			uniqueBunch = false;
 			contigLength = 0;
 		} 
@@ -671,7 +597,7 @@ static void exportAMOSLocus(FILE * outfile, ReadSet * reads, Locus * locus, IDnu
 	Transcript * transcript;
 	IDnum transcriptID = 0;
 
-	for (transcript = locus->transcript; transcript; transcript = transcript->next) 
+	for (transcript = getTranscript(locus); transcript; transcript = getNextTranscript(transcript)) 
 		if (getTranscriptLength(transcript) >= minTransLength)
 			exportAMOSTranscript(outfile, reads, transcript, locusID, transcriptID++, graph);
 }
@@ -768,7 +694,7 @@ void exportAMOSTranscripts(Graph * graph,
 	}
 
 	for (index = 0; index < locusCount; index++) {
-		locus = &(loci[index]);
+		locus = getLocus(loci, index);
 
 		if (locus == NULL)
 			continue;
@@ -840,10 +766,10 @@ void exportUnusedTranscriptReads(Graph* graph, Locus * loci, IDnum locusCount, R
 	resetNodeStatus(graph);
 
 	for (locusIndex = 0; locusIndex < locusCount; locusIndex++)
-		for (transcript = loci[locusIndex].transcript; transcript; transcript = transcript->next)
+		for (transcript = getTranscript(getLocus(loci, locusIndex)); transcript; transcript = getNextTranscript(transcript))
 			if (getTranscriptLength(transcript) >= minTransLength)
-				for(nodeID = 0; nodeID < transcript->contigCount; nodeID++)
-					markUsedReads(transcript->contigs[nodeID], used);
+				for(nodeID = 0; nodeID < getTranscriptContigCount(transcript); nodeID++)
+					markUsedReads(getTranscriptContig(transcript, nodeID), used);
 
 	for (readID = 1; readID <= sequenceCount(graph); readID++) 
 		if (!used[readID])
@@ -865,10 +791,10 @@ IDnum usedTranscriptReads(Graph * graph, Coordinate minTransLength, Locus * loci
 	resetNodeStatus(graph);
 
 	for (locusIndex = 0; locusIndex < locusCount; locusIndex++)
-		for (transcript = loci[locusIndex].transcript; transcript; transcript = transcript->next)
+		for (transcript = getTranscript(getLocus(loci, locusIndex)); transcript; transcript = getNextTranscript(transcript))
 			if (getTranscriptLength(transcript) >= minTransLength)
-				for(nodeID = 0; nodeID < transcript->contigCount; nodeID++)
-					markUsedReads(transcript->contigs[nodeID], used);
+				for(nodeID = 0; nodeID < getTranscriptContigCount(transcript); nodeID++)
+					markUsedReads(getTranscriptContig(transcript, nodeID), used);
 
 	for (readID = 1; readID <= sequenceCount(graph); readID++) 
 		if (used[readID])
@@ -976,16 +902,16 @@ static int compareReferenceMappings(const void * A, const void * B) {
 
 static void initializeReferenceMapping(ReferenceMapping * refMap, PassageMarkerI marker, Transcript * transcript, IDnum nodeIndex, Coordinate nodeOffset) {
 	PassageMarkerI finishMarker = marker;
-	Coordinate totalLength = getNodeLength(transcript->contigs[nodeIndex]);
+	Coordinate totalLength = getNodeLength(getTranscriptContig(transcript, nodeIndex));
 	IDnum index;
 
-	for (index = nodeIndex + 1; index < transcript->contigCount; index++) {
+	for (index = nodeIndex + 1; index < getTranscriptContigCount(transcript); index++) {
 		if (!getNextInSequence(finishMarker))
 			break;
 
-		if (getNode(getNextInSequence(finishMarker)) == transcript->contigs[index]) {
+		if (getNode(getNextInSequence(finishMarker)) == getTranscriptContig(transcript, index)) {
 			finishMarker = getNextInSequence(finishMarker);
-			totalLength += getNodeLength(transcript->contigs[index]);
+			totalLength += getNodeLength(getTranscriptContig(transcript, index));
 		}
 	}
 
@@ -1037,11 +963,11 @@ static void exportTranscriptMapping(FILE * outfile, Transcript * transcript, IDn
 	Coordinate nodeOffset = 0;
 
 	// Count reference sequences
-	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++)
-		for (marker = getMarker(transcript->contigs[nodeIndex]); marker; marker = getNextInNode(marker))
+	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++)
+		for (marker = getMarker(getTranscriptContig(transcript, nodeIndex)); marker; marker = getNextInNode(marker))
 			if (reads->categories[getAbsolutePassMarkerSeqID(marker) - 1] > 2 * CATEGORIES + 1
 			    && (nodeIndex == 0 
-				|| getNode(getPreviousInSequence(marker)) != transcript->contigs[nodeIndex - 1]))
+				|| getNode(getPreviousInSequence(marker)) != getTranscriptContig(transcript, nodeIndex - 1)))
 				referenceCount++;
 
 	// Header
@@ -1052,14 +978,14 @@ static void exportTranscriptMapping(FILE * outfile, Transcript * transcript, IDn
 
 	// Initialize table
 	referenceCount = 0;
-	for (nodeIndex = 0; nodeIndex < transcript->contigCount; nodeIndex++) {
-		for (marker = getMarker(transcript->contigs[nodeIndex]); marker; marker = getNextInNode(marker))
+	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++) {
+		for (marker = getMarker(getTranscriptContig(transcript, nodeIndex)); marker; marker = getNextInNode(marker))
 			if (reads->categories[getAbsolutePassMarkerSeqID(marker) - 1] > 2 * CATEGORIES + 1
 			    && (nodeIndex == 0 
-				|| getNode(getPreviousInSequence(marker)) != transcript->contigs[nodeIndex - 1]))
+				|| getNode(getPreviousInSequence(marker)) != getTranscriptContig(transcript, nodeIndex - 1)))
 				initializeReferenceMapping(&referenceMappings[referenceCount++], marker, transcript, nodeIndex, nodeOffset);
-		nodeOffset += getNodeLength(transcript->contigs[nodeIndex]);
-		nodeOffset += transcript->distances[nodeIndex];
+		nodeOffset += getNodeLength(getTranscriptContig(transcript, nodeIndex));
+		nodeOffset += getTranscriptDistance(transcript, nodeIndex);
 	}
 
 	// Sort table
@@ -1077,8 +1003,8 @@ static void exportLocusMapping(FILE * outfile, Locus * loci, IDnum locusIndex, R
 	Transcript * transcript;
 	IDnum transcriptIndex = 0;
 
-	for (transcript = loci[locusIndex].transcript; transcript != NULL;
-	     transcript = transcript->next)
+	for (transcript = getTranscript(getLocus(loci, locusIndex)); transcript != NULL;
+	     transcript = getNextTranscript(transcript))
 		if (getTranscriptLength(transcript) >= minTransLength)
 			exportTranscriptMapping(outfile, transcript, locusIndex, transcriptIndex++, reads, refCoords, wordLength);
 		
@@ -1210,13 +1136,13 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 	char * sequence = nSequence(getTranscriptLength(transcript)); 
 
 	// Extract sequence
-	for (index = 0; index < transcript->contigCount; index++) {
-	    addNodeToSequence(sequence, transcript->contigs[index], offset);
+	for (index = 0; index < getTranscriptContigCount(transcript); index++) {
+	    addNodeToSequence(sequence, getTranscriptContig(transcript, index), offset);
 
 	    // Increment offset
-	    offset += getNodeLength(transcript->contigs[index]);
-	    if (index < transcript->contigCount - 1)
-		    offset += transcript->distances[index];
+	    offset += getNodeLength(getTranscriptContig(transcript, index));
+	    if (index < getTranscriptContigCount(transcript) - 1)
+		    offset += getTranscriptDistance(transcript, index);
 	}
 
 	// Count initial N's
@@ -1226,7 +1152,7 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 	
 	// Print
 	fprintf(outfile, ">Locus_%li_Transcript_%li/%li_Confidence_%.3f_Length_%li\n",
-		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, transcript->confidence, (long) (strlen(sequence) - offset));
+		(long) locusID + 1, (long) transID + 1, (long) transcriptCount, getConfidence(transcript), (long) (strlen(sequence) - offset));
 	printFastA(outfile, sequence + offset);
 
 	free(sequence);
@@ -1239,13 +1165,13 @@ static void exportLocusTranscripts(Locus * locus, IDnum locusID,
 	Transcript *transcript;
 	IDnum transcriptCount = 0;
 
-	for (transcript = locus->transcript; transcript != NULL;
-	     transcript = transcript->next)
+	for (transcript = getTranscript(locus); transcript != NULL;
+	     transcript = getNextTranscript(transcript))
 		if (getTranscriptLength(transcript) >= minTransLength)
 			transcriptCount++;
 
-	for (transcript = locus->transcript; transcript != NULL;
-	     transcript = transcript->next)
+	for (transcript = getTranscript(locus); transcript != NULL;
+	     transcript = getNextTranscript(transcript))
 		if (getTranscriptLength(transcript) >= minTransLength)
 			exportTranscript(transcript, locusID, index++, transcriptCount, outfile);
 }
@@ -1259,6 +1185,6 @@ void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinat
 	velvetLog("Exporting transcripts to %s\n", filename);
 
 	for (index = 0; index < locusCount; index++)
-		exportLocusTranscripts(&(loci[index]), index, outfile, minTransLength);
+		exportLocusTranscripts(getLocus(loci, index), index, outfile, minTransLength);
 	fclose(outfile);
 }
