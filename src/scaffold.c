@@ -209,21 +209,17 @@ static boolean testConnection(IDnum IDA, Connection * connect,
 	    UNRELIABLE_CONNECTION_CUTOFF)
 		return false;
 
-	if (getNodeLength(connect->destination) <= LENGTHCUTOFF
-	    && connect->direct_count == 0)
-		return false;
-	else if (getNodeLength(connect->destination) <= LENGTHCUTOFF)
-		return true;
+	if (getNodeLength(connect->destination) <= LENGTHCUTOFF)
+		return connect->direct_count > 0;
 
 	for (cat = 0; cat <= CATEGORIES; cat++)
 		total +=
 		    expectedNumberOfConnections(IDA, connect, counts, cat);
 
-	if (total == 0 && connect->direct_count == 0)
-		return false;
-
-	// Remove inconsistent connections
-	return connect->paired_count >= total * pairedThreshold;
+	if (total == 0)
+		return connect->direct_count > 0;
+	else
+		return connect->paired_count >= total * pairedThreshold;
 }
 
 static IDnum *computeReadToNodeCounts()
@@ -968,8 +964,7 @@ static void removeUnreliableConnections(Category * categories)
 	free(counts);
 }
 
-static void removeNodeConnectionGappedConnection(Node * node, Connection * connect) 
-{
+static boolean isGapped(Connection * connect, Node * node) {
 	Coordinate distance;
 	int overlap = getWordLength(graph) - 1;
 
@@ -977,9 +972,10 @@ static void removeNodeConnectionGappedConnection(Node * node, Connection * conne
 	distance -= getNodeLength(node)/2;
 	distance -= getNodeLength(connect->destination)/2;
 
-	if (distance > overlap && connect->direct_count == 0)
-		destroyConnection(connect, getNodeID(node));
-
+	if (getUniqueness(connect->destination))
+		return (distance > overlap && connect->direct_count == 0);
+	else
+		return (distance > 0 && connect->direct_count == 0);
 }
 
 static void removeNodeGappedConnections(Node * node) 
@@ -992,7 +988,8 @@ static void removeNodeGappedConnections(Node * node)
 	for (connect = scaffold[getNodeID(node) + nodeCount(graph)]; connect != NULL;
 	     connect = next) {
 		next = connect->next;
-		removeNodeConnectionGappedConnection(node, connect);
+		if (isGapped(connect, node))
+			destroyConnection(connect, getNodeID(node));
 	}
 
 }
@@ -1349,6 +1346,8 @@ void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
 		removeGappedConnections();
 	
 	sortScaffold();
+	// DEBUG
+	printOasesConnections(reads->categories);
 
 	// Clean up
 	free(lengths);
