@@ -24,6 +24,7 @@ typedef struct transcript_st Transcript;
 #include "locus.h"
 
 Transcript * newTranscript(IDnum contigCount, double confidence);
+void produceTranscript(Locus * locus, IDnum nodesInList);
 void addContigToTranscript(Transcript * transcript, Node * node, Coordinate distance);
 
 // Getter/Setter

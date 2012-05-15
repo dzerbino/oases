@@ -200,7 +200,7 @@ static void extendComponent(Locus * locus)
 
 static Locus *extractConnectedComponents(IDnum locusCount)
 {
-	Locus *loci = callocOrExit(locusCount, Locus);
+	Locus *loci = allocateLocusArray(locusCount);
 	Locus *locus;
 	IDnum index;
 	IDnum locusIndex = 0;
@@ -212,40 +212,30 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 	for (index = 1; index <= nodeCount(graph); index++) {
 		node = getNodeInGraph(graph, index);
 		if (!getNodeStatus(node) && getUniqueness(node)) {
-			nodeIndex = 0;
-			locus = &(loci[locusIndex++]);
+			locus = getLocus(loci, locusIndex++);
 
 			// Long contigs
 			fillUpComponent(node);
-			locus->longContigCount = countMarkedNodes();
-			locus->contigs =
-			    callocOrExit(locus->longContigCount, Node *);
+			setLongContigCount(locus, countMarkedNodes());
 			while (existsMarkedNode()) 
-				locus->contigs[nodeIndex++] =
-				    popNodeRecord();
+				addContig(locus, popNodeRecord());
 
 			// Secondary contigs
 			extendComponent(locus);
-			locus->contigCount =
-			    locus->longContigCount + countMarkedNodes();
-			locus->contigs =
-			    reallocOrExit(locus->contigs,
-					  locus->contigCount, Node *);
+			setContigCount(locus, getLongContigCount(locus) + countMarkedNodes());
 			while (existsMarkedNode())
-				locus->contigs[nodeIndex++] =
-				    popNodeRecord();
+				addContig(locus, popNodeRecord());
+
 			// Mark primary nodes so that their twins are not reused
 			for (nodeIndex = 0;
-			     nodeIndex < locus->longContigCount;
+			     nodeIndex < getLongContigCount(locus);
 			     nodeIndex++)
-				setNodeStatus(locus->contigs[nodeIndex],
-					      true);
+				setNodeStatus(getContig(locus, nodeIndex), true);
 
 			// Unmark secondary nodes so that they are available to other loci
-			for (nodeIndex = locus->longContigCount;
-			     nodeIndex < locus->contigCount; nodeIndex++)
-				setNodeStatus(locus->contigs[nodeIndex],
-					      false);
+			for (nodeIndex = getLongContigCount(locus);
+			     nodeIndex < getContigCount(locus); nodeIndex++)
+				setNodeStatus(getContig(locus, nodeIndex), false);
 		}
 	}
 

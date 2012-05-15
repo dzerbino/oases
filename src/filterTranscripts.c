@@ -28,63 +28,12 @@
 #include "locallyCorrectedGraph.h"
 #include "transcript.h"
 #include "scaffold.h"
+#include "nodeList.h"
 
-static RecycleBin * nodeListMemory = NULL;
-static size_t BLOCK_SIZE = 10000;
-static NodeList * markedNodes = NULL;
 static Graph * graph = NULL;
 
 static PassageMarkerI nextMarker = NULL_IDX;
 static PassageMarkerI nextTranscript = NULL_IDX;
-
-////////////////////////////////////////
-// Node list
-////////////////////////////////////////
-static NodeList *allocateNodeList()
-{
-	if (nodeListMemory == NULL)
-		nodeListMemory =
-		    newRecycleBin(sizeof(NodeList), BLOCK_SIZE);
-
-	return allocatePointer(nodeListMemory);
-}
-
-static void deallocateNodeList(NodeList * nodeList)
-{
-	deallocatePointer(nodeListMemory, nodeList);
-}
-
-static NodeList *recordNode(Node * node)
-{
-	NodeList *nodeList = allocateNodeList();
-	nodeList->node = node;
-	nodeList->next = markedNodes;
-	nodeList->previous = NULL;
-
-	if (markedNodes != NULL)
-		markedNodes->previous = nodeList;
-
-	markedNodes = nodeList;
-
-	return nodeList;
-}
-
-static Node *popNodeRecord()
-{
-	NodeList *nodeList = markedNodes;
-	Node *node;
-
-	if (markedNodes == NULL)
-		return NULL;
-
-	node = nodeList->node;
-	markedNodes = nodeList->next;
-	if (markedNodes != NULL)
-		markedNodes->previous = NULL;
-
-	deallocateNodeList(nodeList);
-	return node;
-}
 
 ////////////////////////////////////////
 // PassageMarker status 
@@ -342,17 +291,6 @@ static void fillUpComponent(Node * node)
 			fillUpComponent(getTwinNode(next));
 }
 
-static IDnum countMarkedNodes()
-{
-	NodeList *list;
-	IDnum counter = 0;
-
-	for (list = markedNodes; list != NULL; list = list->next)
-		counter++;
-
-	return counter;
-}
-
 static Locus *extractConnectedComponents(IDnum locusCount)
 {
 	Locus *loci = allocateLocusArray(locusCount);
@@ -372,13 +310,16 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 			// Long contigs
 			fillUpComponent(node);
 			setLongContigCount(locus, countMarkedNodes());
-			while (markedNodes) 
+			while (existsMarkedNode()) 
 				addContig(locus, popNodeRecord());
 
 			// Secondary contigs
 			extendComponent(locus);
 			setContigCount(locus, getLongContigCount(locus) + countMarkedNodes());
-			while (markedNodes)
+			// DEBUG
+			if (getLongContigCount(locus) > 1 && countMarkedNodes() == 0)
+				abort();
+			while (existsMarkedNode())
 				addContig(locus, popNodeRecord());
 
 			// Mark primary nodes so that their twins are not reused
@@ -396,7 +337,6 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 
 	return loci;
 }
-
 
 Locus *reextractGraphLoci(Graph * graph, IDnum * locusCount) {
 	velvetLog("Re-extracting loci from connection graph...\n");
@@ -423,7 +363,7 @@ static IDnum listTranscriptNodes(PassageMarkerI marker) {
 	return nodesInList;
 }
 
-static void produceTranscript(Locus * locus, IDnum nodesInList)
+static void produceTranscript_Merge(Locus * locus, IDnum nodesInList)
 {
 	Node *node;
 
@@ -449,7 +389,7 @@ static void addTranscriptToLocus_Marker(Locus * locus, PassageMarkerI marker) {
 	for (ptr = last; ptr; ptr = getPreviousInSequence(ptr))
 		setPassageMarkerStatus(ptr, true);
 
-	produceTranscript(locus, listTranscriptNodes(last));
+	produceTranscript_Merge(locus, listTranscriptNodes(last));
 }
 
 static void addTranscriptToLocus_Node(Locus * locus, IDnum index) {
