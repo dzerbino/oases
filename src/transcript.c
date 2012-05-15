@@ -76,6 +76,9 @@ Transcript * newTranscript(IDnum contigCount, double confidence) {
 	transcript->contigs = callocOrExit(contigCount, Node *);
 	transcript->distances = callocOrExit(contigCount, Coordinate);
 	transcript->confidence = confidence;
+	// DEBUG
+	if (confidence > 1)
+		abort();
 	return transcript;
 }
 
@@ -468,7 +471,7 @@ static void produceTranscript(Locus * locus, IDnum nodesInList)
 	IDnum index = 0;
 	Node *node;
 
-	Transcript *transcript = newTranscript(nodesInList, ((double) nodesInList) / locus->contigCount);
+	Transcript *transcript = newTranscript(nodesInList, ((double) nodesInList) / getContigCount(locus));
 
 	while ((node = popNodeRecord())) {
 		transcript->contigs[index] = node;
