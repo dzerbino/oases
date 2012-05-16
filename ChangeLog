@@ -130,3 +130,10 @@ V 0.2.06
 - Bug in Python
 - Streamlined merging
 - Updated manual
+
+V 0.2.07
+- Massive refactoring of the code
+- Bug with confidence > 1
+- Reduced the amount of unwanted gaps in assemblies
+- Memory corruptions
+- More consistent removal of transcripts when merging
