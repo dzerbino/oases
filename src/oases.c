@@ -42,6 +42,7 @@
 // Oases specific stuff 
 #include "locus.h"
 #include "transcript.h"
+#include "extractLoci.h"
 #include "filterTranscripts.h"
 #include "extractMergedTranscripts.h"
 #include "oasesExport.h"

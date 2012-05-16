@@ -24,10 +24,6 @@ typedef struct locus_st Locus;
 #include "scaffold.h"
 #include "transcript.h"
 
-Locus *extractGraphLoci(Graph * graph, ReadSet * argReads,
-			boolean * dubious, ShortLength * lengths,
-			IDnum * locusCount, boolean scaffolding);
-
 Connection *getReverseActiveConnection(Node * node);
 
 // Getters and setters
@@ -46,6 +42,7 @@ void removeNodeFromLocus(Node * node);
 void renumberLocusNodes(Locus * locus);
 void setLocusConnectionStatus(Locus * locus, boolean status);
 void setLocusStatus(Locus * locus, boolean status);
+void revert(Locus * locus);
 
 // Constants
 void setUnreliableConnectionCutoff_oases(int val);

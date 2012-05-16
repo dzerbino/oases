@@ -119,8 +119,6 @@ static boolean removeRedundantTranscripts_Marker(PassageMarkerI marker, boolean 
 			continue;
 		if (!uniqueNodes && getPassageMarkerStatus(marker2) == 2)
 			continue;
-		if (!isInitial(marker) && !isInitial(marker2))
-			continue;
 
 		int comparison = compareMarkers(marker, marker2);
 
