@@ -97,13 +97,14 @@ static Coordinate getTranscriptLength(Transcript * transcript) {
 	for (index = 0; index < getTranscriptContigCount(transcript); index++) {
 		totalLength += getNodeLength(getTranscriptContig(transcript, index));
 		if (index < getTranscriptContigCount(transcript) - 1) {
-			if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1) {
-				totalLength += getTranscriptDistance(transcript, index);
-			} else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10) {
-				totalLength += 10;
-			} else {
-				totalLength += getTranscriptDistance(transcript, index);
-			}
+		        // Ignoring NCBI request for 10bp gaps
+			//if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1) {
+			//	totalLength += getTranscriptDistance(transcript, index);
+			//} else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10) {
+			//	totalLength += 10;
+			//} else {
+			totalLength += getTranscriptDistance(transcript, index);
+			//}
 		}
 	}
 
@@ -136,9 +137,10 @@ static void exportTranscriptContigs(Transcript * transcript, IDnum locusID,
 			if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1) {
 				fprintf(outfile, "-(0)->");
 				totalLength += getTranscriptDistance(transcript, index);
-			} else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10) {
-				fprintf(outfile, "-(10)->");
-				totalLength += 10;
+			// Ignoring NCBI request for 10bp gaps
+			//} else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10) {
+			//	fprintf(outfile, "-(10)->");
+			//	totalLength += 10;
 			} else {
 				fprintf(outfile, "-(%li)->",
 					(long) getTranscriptDistance(transcript, index));
@@ -1142,12 +1144,13 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 	    // Increment offset
 	    offset += getNodeLength(getTranscriptContig(transcript, index));
 	    if (index < getTranscriptContigCount(transcript) - 1) {
-		    if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1)
-			    offset += getTranscriptDistance(transcript, index);
-		    else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10)
-			    offset += 10;
-		    else
-			    offset += getTranscriptDistance(transcript, index);
+		    // Ignoring NCBI request for 10bp gaps
+		    //if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1)
+		    //	    offset += getTranscriptDistance(transcript, index);
+		    //else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10)
+		    //	    offset += 10;
+		    //else
+		    offset += getTranscriptDistance(transcript, index);
 	    }
 	}
 
