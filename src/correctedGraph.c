@@ -478,7 +478,7 @@ static void determineEligibleStartingPoints()
 	IDnum counter = 0;
 	FibHeap *heap = newFibHeap();
 
-	puts("Determining eligible starting points");
+	velvetLog("Determining eligible starting points\n");
 
 	for (nodeIndex = 1; nodeIndex <= nodeCount(graph); nodeIndex++) {
 		node = getNodeInGraph(graph, nodeIndex);
@@ -493,7 +493,7 @@ static void determineEligibleStartingPoints()
 		eligibleStartingPoints[counter++] = getNodeID(node);
 
 	destroyHeap(heap);
-	puts("Done listing starting nodes");
+	velvetLog("Done listing starting nodes\n");
 }
 
 static IDnum starting_point_counter = 0;
@@ -2191,7 +2191,7 @@ static void initializeTodoLists()
 	Ticket *currentTicket, *tmp;
 	Node *destination;
 
-	puts("Initializing todo lists");
+	velvetLog("Initializing todo lists\n");
 
 	for (index = -nodes; index <= nodes; index++) {
 		node = getNodeInGraph(graph, index);
@@ -2229,7 +2229,7 @@ static void initializeTodoLists()
 		}
 	}
 
-	puts("Done with initilization");
+	velvetLog("Done with initilization\n");
 }
 
 static void tourBusNode(Node * node)
@@ -2241,7 +2241,7 @@ static void tourBusNode(Node * node)
 
 	dbgCounter++;
 	if (dbgCounter % 1000 == 0) {
-		printf("%d nodes visited\n", dbgCounter);
+		velvetLog("%d nodes visited\n", dbgCounter);
 		fflush(stdout);
 	}
 
@@ -2330,7 +2330,7 @@ void clipTips(Graph * graph)
 	int Wordlength = getWordLength(graph);
 	PassageMarkerI marker;
 
-	puts("Clipping short tips off graph");
+	velvetLog("Clipping short tips off graph");
 
 	while (modified) {
 		modified = false;
@@ -2373,7 +2373,7 @@ void clipTips(Graph * graph)
 	}
 
 	concatenateGraph(graph);
-	printf("%d nodes left\n", nodeCount(graph));
+	velvetLog("%d nodes left\n", nodeCount(graph));
 }
 
 void clipTipsHard(Graph * graph, boolean conserveLong)
@@ -2384,7 +2384,7 @@ void clipTipsHard(Graph * graph, boolean conserveLong)
 	int Wordlength = getWordLength(graph);
 	PassageMarkerI marker;
 
-	puts("Clipping short tips off graph, drastic");
+	velvetLog("Clipping short tips off graph, drastic\n");
 
 	while (modified) {
 		modified = false;
@@ -2429,7 +2429,7 @@ void clipTipsHard(Graph * graph, boolean conserveLong)
 	}
 
 	concatenateGraph(graph);
-	printf("%d nodes left\n", nodeCount(graph));
+	velvetLog("%d nodes left\n", nodeCount(graph));
 }
 
 static void tourBus(Node * startingPoint)
@@ -2563,7 +2563,7 @@ void correctGraph(Graph * argGraph, ShortLength * argSequenceLengths, Category *
 	dbgCounter = 0;
 	// Done with global params
 
-	printf("Correcting graph with cutoff %f\n", MAXDIVERGENCE);
+	velvetLog("Correcting graph with cutoff %f\n", MAXDIVERGENCE);
 
 	removeLameArcs(graph, conserveLong, dubious);
 	//clipTips(graph);

@@ -180,11 +180,11 @@ void removeRedundantTranscripts(Graph * argGraph) {
 	resetPassageMarkerStatuses(graph);
 	defineUniqueNodes(graph);
 
-	puts("Scanning long nodes");
+	velvetLog("Scanning long nodes\n");
 	for (index = 1; index <= nodeCount(graph); index++)
 		removeRedundantTranscripts_Node(getNodeInGraph(graph, index), true);
 
-	puts("Scanning short nodes");
+	velvetLog("Scanning short nodes\n");
 	for (index = 1; index <= nodeCount(graph); index++)
 		removeRedundantTranscripts_Node(getNodeInGraph(graph, index), false);
 }

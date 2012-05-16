@@ -115,15 +115,15 @@ static void extendComponentToNode(Node * node)
 
 static void extendComponentFromNode(Node * node)
 {
-	PassageMarkerI marker;
-	Node * next;
+	PassageMarkerI marker, ptr;
 
 	for (marker = getMarker(node); marker; marker = getNextInNode(marker))
-		extendComponentToNode(getNextDestination(marker));
+		for (ptr = getNextInSequence(marker); ptr; ptr = getNextInSequence(ptr))
+			extendComponentToNode(getNode(ptr));
 
 	for (marker = getMarker(getTwinNode(node)); marker; marker = getNextInNode(marker))
-		if ((next = getNextDestination(marker)))
-			extendComponentToNode(getTwinNode(next));
+		for (ptr = getNextInSequence(marker); ptr; ptr = getNextInSequence(ptr))
+			extendComponentToNode(getTwinNode(getNode(ptr)));
 }
 
 static void extendComponent(Locus * locus)
@@ -167,6 +167,7 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 		node = getNodeInGraph(graph, index);
 		if (!getNodeStatus(node) && getUniqueness(node)) {
 			locus = getLocus(loci, locusIndex++);
+			clearLocus(locus);
 
 			// Long contigs
 			fillUpComponent(node);
@@ -177,9 +178,6 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 			// Secondary contigs
 			extendComponent(locus);
 			setContigCount(locus, getLongContigCount(locus) + countMarkedNodes());
-			// DEBUG
-			if (getLongContigCount(locus) > 1 && countMarkedNodes() == 0)
-				abort();
 			while (existsMarkedNode())
 				addContig(locus, popNodeRecord());
 
@@ -214,24 +212,29 @@ Locus *reextractGraphLoci(Graph * graph, IDnum * locusCount) {
 
 static IDnum listTranscriptNodes(PassageMarkerI marker) {
 	PassageMarkerI current;
-	IDnum nodesInList = 0;
+	IDnum counter = 0;
 
 	for (current = marker; current; current = getPreviousInSequence(current)) {
 		recordNode(getNode(current));
-		nodesInList++;
+		if (!getNodeStatus(getNode(current))) {
+			setSingleNodeStatus(getNode(current), true);
+			counter++;
+		}
 	}
 
-	return nodesInList;
+	return counter;
 }
 
-static void produceTranscript_Merge(Locus * locus, IDnum nodesInList)
+static void produceTranscript_Merge(Locus * locus, IDnum counter)
 {
 	Node *node;
 
-	Transcript *transcript = newTranscript(nodesInList, ((double) nodesInList) / getContigCount(locus));
+	Transcript *transcript = newTranscript(countMarkedNodes(), ((double) counter) / getContigCount(locus));
 
-	while ((node = popNodeRecord())) 
+	while ((node = popNodeRecord())) {
+		setSingleNodeStatus(node, false);
 		addContigToTranscript(transcript, node, 0);
+	}
 
 	addTranscript(locus, transcript);
 }
@@ -264,7 +267,7 @@ static void addTranscriptToLocus(Locus * locus)
 {
 	IDnum index;
 
-	for (index = 0; index < getContigCount(locus); index++)
+	for (index = 0; index < getLongContigCount(locus); index++)
 		addTranscriptToLocus_Node(locus, index);
 }
 

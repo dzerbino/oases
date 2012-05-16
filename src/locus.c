@@ -213,6 +213,7 @@ static Locus *extractConnectedComponents(IDnum locusCount)
 		node = getNodeInGraph(graph, index);
 		if (!getNodeStatus(node) && getUniqueness(node)) {
 			locus = getLocus(loci, locusIndex++);
+			clearLocus(locus);
 
 			// Long contigs
 			fillUpComponent(node);
@@ -464,12 +465,14 @@ IDnum getContigCount(Locus *locus) {
 }
 
 void setContigCount(Locus *locus, IDnum count) {
-	locus->contigCount = count;
-	locus->contigs = reallocOrExit(locus->contigs, count, Node *);
+	if (locus->contigs)
+		locus->contigs = reallocOrExit(locus->contigs, count, Node *);
+	else
+		locus->contigs = callocOrExit(count, Node *);
 }
 
 IDnum getLongContigCount(Locus *locus) {
-	return locus->contigCount;
+	return locus->longContigCount;
 }
 
 void setLongContigCount(Locus *locus, IDnum count) {
@@ -498,6 +501,8 @@ void cleanLocusMemory(Locus * loci, IDnum locusCount)
 }
 
 void clearLocus(Locus * locus) {
+	locus->contigs = NULL;
+	locus->contigCount = 0;
 	locus->longContigCount = 0;
 	locus->transcript = NULL;
 }

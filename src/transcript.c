@@ -74,9 +74,6 @@ Transcript * newTranscript(IDnum contigCount, double confidence) {
 	transcript->contigs = callocOrExit(contigCount, Node *);
 	transcript->distances = callocOrExit(contigCount, Coordinate);
 	transcript->confidence = confidence;
-	// DEBUG
-	if (confidence > 1)
-		abort();
 	return transcript;
 }
 
