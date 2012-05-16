@@ -1347,8 +1347,6 @@ void buildScaffold(Graph * argGraph, ReadSet * reads, boolean * dubious,
 		removeGappedConnections();
 	
 	sortScaffold();
-	// DEBUG
-	printOasesConnections(reads->categories);
 
 	// Clean up
 	free(lengths);
