@@ -100,6 +100,8 @@ void produceTranscript(Locus * locus, IDnum nodesInList)
 			    getNodeLength(node)/2;
 			transcript->distances[index - 1] -=
 			    getNodeLength(transcript->contigs[index - 1])/2;
+			if (getNodeLength(node) % 2 > 0 || getNodeLength(transcript->contigs[index - 1]) % 2 > 0)
+			    transcript->distances[index - 1] -= 1;
 			if (transcript->distances[index - 1] < 0)
 				transcript->distances[index - 1] = 0;
 		}

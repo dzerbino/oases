@@ -1141,8 +1141,14 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 
 	    // Increment offset
 	    offset += getNodeLength(getTranscriptContig(transcript, index));
-	    if (index < getTranscriptContigCount(transcript) - 1)
-		    offset += getTranscriptDistance(transcript, index);
+	    if (index < getTranscriptContigCount(transcript) - 1) {
+		    if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1)
+			    offset += getTranscriptDistance(transcript, index);
+		    else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10)
+			    offset += 10;
+		    else
+			    offset += getTranscriptDistance(transcript, index);
+	    }
 	}
 
 	// Count initial N's
