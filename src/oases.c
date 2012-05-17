@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 // Compilation
 #include "globals.h"
@@ -31,6 +32,7 @@
 #include "kmer.h"
 #include "readSet.h"
 #include "tightString.h"
+#include "binarySequences.h"
 #include "graph.h"
 
 // Graph operations
@@ -114,6 +116,7 @@ int main(int argc, char **argv)
 	boolean scaffolding = false;
 	boolean merge = false;
 	boolean exportAlignments = false;
+	SequencesReader *seqReadInfo = NULL;
 
 	setProgramName("oases");
 
@@ -253,8 +256,18 @@ int main(int argc, char **argv)
 	// Bookkeeping
 	logInstructions(argc, argv, directory);
 
+	seqReadInfo = callocOrExit(1, SequencesReader);
 	strcpy(seqFilename, directory);
-	strcat(seqFilename, "/Sequences");
+	// if binary CnyUnifiedSeq exists, use it.  Otherwise try Sequences
+	strcat(seqFilename, "/CnyUnifiedSeq");
+	if (access(seqFilename, R_OK) == 0) {
+		seqReadInfo->m_bIsBinary = true;
+	} else {
+		seqReadInfo->m_bIsBinary = false;
+		strcpy(seqFilename, directory);
+		strcat(seqFilename, "/Sequences");
+	}
+	seqReadInfo->m_seqFilename = seqFilename;
 
 	strcpy(graphFilename, directory);
 	strcat(graphFilename, "/Graph2");
@@ -265,9 +278,13 @@ int main(int argc, char **argv)
 		strcpy(graphFilename, directory);
 		strcat(graphFilename, "/Graph2");
 		graph = importGraph(graphFilename);
-		reads =
-		    importReadSet(seqFilename);
-		convertSequences(reads);
+		if (seqReadInfo->m_bIsBinary)
+			reads = importCnyReadSet(seqFilename);
+		else {
+			reads =
+			    importReadSet(seqFilename);
+			convertSequences(reads);
+		}
 	} else {
 		puts("No Graph2 file to work with!");
 		puts("Please re-run Velvetg with the -read_trkg option on.");
