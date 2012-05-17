@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	boolean scaffolding = false;
 	boolean merge = false;
 	boolean exportAlignments = false;
-	SequencesReader *seqReadInfo = NULL;
+	boolean isBinary = false;
 
 	setProgramName("oases");
 
@@ -256,18 +256,15 @@ int main(int argc, char **argv)
 	// Bookkeeping
 	logInstructions(argc, argv, directory);
 
-	seqReadInfo = callocOrExit(1, SequencesReader);
 	strcpy(seqFilename, directory);
 	// if binary CnyUnifiedSeq exists, use it.  Otherwise try Sequences
 	strcat(seqFilename, "/CnyUnifiedSeq");
 	if (access(seqFilename, R_OK) == 0) {
-		seqReadInfo->m_bIsBinary = true;
+		isBinary = true;
 	} else {
-		seqReadInfo->m_bIsBinary = false;
 		strcpy(seqFilename, directory);
 		strcat(seqFilename, "/Sequences");
 	}
-	seqReadInfo->m_seqFilename = seqFilename;
 
 	strcpy(graphFilename, directory);
 	strcat(graphFilename, "/Graph2");
@@ -278,7 +275,7 @@ int main(int argc, char **argv)
 		strcpy(graphFilename, directory);
 		strcat(graphFilename, "/Graph2");
 		graph = importGraph(graphFilename);
-		if (seqReadInfo->m_bIsBinary)
+		if (isBinary)
 			reads = importCnyReadSet(seqFilename);
 		else {
 			reads =
