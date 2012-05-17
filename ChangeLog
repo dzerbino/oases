@@ -137,3 +137,6 @@ V 0.2.07
 - Reduced the amount of unwanted gaps in assemblies
 - Memory corruptions
 - More consistent removal of transcripts when merging
+
+V 0.2.08
+- Reads binary sequences files
