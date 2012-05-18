@@ -2758,8 +2758,7 @@ boolean *removeLowCoverageNodesAndDenounceDubiousReadsConserveLong(Graph * graph
 
 	velvetLog("Removing contigs with coverage < %f...\n", minCov);
 		
-	if (denounceReads)
-		res = callocOrExit(sequenceCount(graph), boolean);
+	res = callocOrExit(sequenceCount(graph), boolean);
 		
 	if (export) {
 		outfile = fopen(filename, "w");
