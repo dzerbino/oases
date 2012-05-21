@@ -99,9 +99,9 @@ static boolean isPreviousToNode(Node * previous, Node * target)
 
 		if (getNodeID(currentNode) > nodeCount(graph)
 		    || getNodeID(currentNode) < -nodeCount(graph)) {
-			printf("Node ID??? %d %d\n",
-			       getNodeID(currentNode),
-			       getNodeID(previousNode));
+			printf("Node ID??? %ld %ld\n",
+			       (long) getNodeID(currentNode),
+			       (long) getNodeID(previousNode));
 		}
 
 		if (getNodeTime(currentNode) != targetTime)

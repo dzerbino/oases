@@ -217,7 +217,7 @@ ReadSet *importEmptyReadSet(char *filename, Coordinate ** lengthsPtr,
 		if (line[0] == '>')
 			sequenceCount++;
 	fclose(file);
-	velvetLog("%d sequences found\n", sequenceCount);
+	velvetLog("%ld sequences found\n", (long) sequenceCount);
 
 	reads->readCount = sequenceCount;
 
@@ -300,7 +300,7 @@ static void exportAMOSMarker(FILE * outfile, PassageMarkerI marker,
 	}
 
 	fprintf(outfile, "{TLE\n");
-	fprintf(outfile, "src:%d\n", getAbsolutePassMarkerSeqID(marker));
+	fprintf(outfile, "src:%ld\n", (long) getAbsolutePassMarkerSeqID(marker));
 	fprintf(outfile, "off:%lld\n", (long long) (offset + getStartOffset(marker)));
 	fprintf(outfile, "clr:%lld,%lld\n", (long long) sequenceStart, (long long) sequenceFinish);
 	fprintf(outfile, "}\n");
@@ -322,7 +322,7 @@ static void exportAMOSShortMarker(FILE * outfile, ShortReadMarker * marker,
 		return;
 
 	fprintf(outfile, "{TLE\n");
-	fprintf(outfile, "src:%d\n", getShortReadMarkerID(marker));
+	fprintf(outfile, "src:%ld\n", (long) getShortReadMarkerID(marker));
 	fprintf(outfile, "off:%lld\n", (long long) read_offset);
 	fprintf(outfile, "clr:0,%lld\n", (long long) getLength(sequence));
 	fprintf(outfile, "}\n");
@@ -348,7 +348,7 @@ static void exportAMOSReverseShortMarker(FILE * outfile,
 		return;
 
 	fprintf(outfile, "{TLE\n");
-	fprintf(outfile, "src:%d\n", getShortReadMarkerID(marker));
+	fprintf(outfile, "src:%ld\n", (long) getShortReadMarkerID(marker));
 	fprintf(outfile, "off:%lld\n", (long long) read_offset);
 	fprintf(outfile, "clr:%lld,0\n", (long long) getLength(sequence));
 	fprintf(outfile, "}\n");
@@ -373,8 +373,8 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 	Nucleotide nucleotide;
 
 	fprintf(outfile, "{CTG\n");
-	fprintf(outfile, "iid:%d\n", iid);
-	fprintf(outfile, "eid:%d-%d-%d\n", locusID, transcriptID, internalIndex);
+	fprintf(outfile, "iid:%ld\n", (long) iid);
+	fprintf(outfile, "eid:%ld-%ld-%ld\n", (long) locusID, (long) transcriptID, (long) internalIndex);
 
 	fprintf(outfile, "seq:\n");
 	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++) {
@@ -561,7 +561,7 @@ static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * tr
 	}
 
 	fprintf(outfile, "{SCF\n");
-	fprintf(outfile, "eid:%d-%d\n", locusID, transcriptID);
+	fprintf(outfile, "eid:%ld-%ld\n", (long) locusID, (long) transcriptID);
 
 	uniqueBunch = false;
 	start = 0;
@@ -580,7 +580,7 @@ static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * tr
 				fprintf(outfile, "{TLE\n");
 				fprintf(outfile, "off:%lld\n", (long long) start);
 				fprintf(outfile, "clr:0,%lld\n", (long long) contigLength);
-				fprintf(outfile, "src:%d\n", contigIndex++);
+				fprintf(outfile, "src:%ld\n", (long) contigIndex++);
 				fprintf(outfile, "}\n");
 			}
 			start += contigLength;
@@ -611,10 +611,10 @@ static void exportAMOSRead(FILE * outfile, TightString * tString,
 	char str[100];
 
 	fprintf(outfile, "{RED\n");
-	fprintf(outfile, "iid:%d\n", index);
-	fprintf(outfile, "eid:%d\n", index);
+	fprintf(outfile, "iid:%ld\n", (long) index);
+	fprintf(outfile, "eid:%ld\n", (long) index);
 	if (frg_index > 0)
-		fprintf(outfile, "frg:%d\n", frg_index);
+		fprintf(outfile, "frg:%ld\n", (long) frg_index);
 
 	fprintf(outfile, "seq:\n");
 	start = 0;
@@ -667,10 +667,10 @@ void exportAMOSTranscripts(Graph * graph,
 			fprintf(outfile, "{FRG\n");
 			fprintf(outfile, "lib:%d\n",
 				(int) ((reads->categories[index - 1] / 2) + 1));
-			fprintf(outfile, "rds:%d,%d\n", index,
-				index + 1);
-			fprintf(outfile, "eid:%d\n", index);
-			fprintf(outfile, "iid:%d\n", index);
+			fprintf(outfile, "rds:%ld,%ld\n", (long) index,
+				(long) index + 1);
+			fprintf(outfile, "eid:%ld\n", (long) index);
+			fprintf(outfile, "iid:%ld\n", (long) index);
 			fprintf(outfile, "typ:I\n");
 			fprintf(outfile, "}\n");
 			index++;
