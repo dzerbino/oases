@@ -47,7 +47,7 @@ void printOasesConnections(Category * cats);
 
 // Constant params for filtering
 void scaffold_setPairedThreshold(double pairedThreshold);
-void scaffold_setUnreliableConnectionCutoff(int val);
+void scaffold_setUnreliableConnectionCutoff(IDnum val);
 void scaffold_setDegreeCutoff(int val);
 
 // Utility
