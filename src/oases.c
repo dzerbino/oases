@@ -354,7 +354,7 @@ int main(int argc, char **argv)
 	strcat(transcriptFilename,
 	       "/contig-ordering.txt");
 	exportContigOrders(loci, locusCount, transcriptFilename, minTransLength, graph);
-	velvetLog("Finished extracting transcripts, used %li/%li reads\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph));
+	logFinalOasesStats(graph, minTransLength, loci, locusCount, directory);
 
 	if (unusedReads) 
 		exportUnusedTranscriptReads(graph, loci, locusCount, reads, minTransLength, directory);

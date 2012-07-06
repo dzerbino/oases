@@ -29,4 +29,5 @@ void exportTranscriptMappings(Locus * loci, IDnum locusCount, Graph * graph, Rea
 ReadSet *importEmptyReadSet(char *seqFilename, Coordinate ** lengthsPtr,
 			    int wordLength);
 
+void logFinalOasesStats(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount, char *directory);
 #endif

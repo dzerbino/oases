@@ -140,3 +140,6 @@ V 0.2.07
 
 V 0.2.08
 - Reads binary sequences files
+
+V 0.2.09
+- Store stats in Log file

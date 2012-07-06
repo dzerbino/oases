@@ -1197,3 +1197,29 @@ void exportTranscripts(Locus * loci, IDnum locusCount, char *filename, Coordinat
 		exportLocusTranscripts(getLocus(loci, index), index, outfile, minTransLength);
 	fclose(outfile);
 }
+
+void logFinalOasesStats(Graph * graph, Coordinate minTransLength, Locus * loci, IDnum locusCount, char *directory) {
+	char *logFilename =
+	    mallocOrExit(strlen(directory) + 100, char);
+	char *statsLine = 
+	    mallocOrExit(5000, char);
+	FILE *logFile;
+
+	strcpy(logFilename, directory);
+	strcat(logFilename, "/Log");
+	logFile = fopen(logFilename, "a");
+
+	if (logFile == NULL)
+		exitErrorf(EXIT_FAILURE, true, "Could not write to %s",
+		       logFilename);
+
+	sprintf
+	    (statsLine, "Finished extracting transcripts, used %li/%li reads on %li loci\n", (long) usedTranscriptReads(graph, minTransLength, loci, locusCount), (long) sequenceCount(graph), (long) locusCount);
+
+	velvetFprintf(logFile, "%s", statsLine);
+	velvetLog("%s", statsLine);
+
+	fclose(logFile);
+	free(logFilename);
+	free(statsLine);
+}
