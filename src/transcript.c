@@ -190,7 +190,10 @@ Node * getTranscriptContig(Transcript * transcript, IDnum index) {
 }
 
 Coordinate getTranscriptDistance(Transcript * transcript, IDnum index) {
-	return transcript->distances[index];
+	if (index < transcript->contigCount - 1)
+		return transcript->distances[index];
+	else
+		return 0;
 }
 
 double getConfidence(Transcript * transcript) {

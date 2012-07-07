@@ -354,10 +354,112 @@ static void exportAMOSReverseShortMarker(FILE * outfile,
 	fprintf(outfile, "}\n");
 }
 
+static char * nSequence(Coordinate length) {
+	char * sequence = callocOrExit(length + 1, char);
+	Coordinate position;
+
+	for (position = 0; position < length; position++) 
+		sequence[position] = 'N';
+	sequence[length] = '\0';
+
+	return sequence;
+}
+
+static char revComp(char base) {
+	if (base == 'A')
+		return 'T';
+	if (base == 'T')
+		return 'A';
+	if (base == 'G')
+		return 'C';
+	if (base == 'C')
+		return 'G';
+	return 'N';
+}
+
+static void printFastA(FILE * outfile, char * sequence) {
+	Coordinate position;
+	size_t length = strlen(sequence);
+	char str[100];
+
+	for (position = 0; position < length; position += strlen(str)) {
+		strncpy(str, sequence + position, 60);
+		str[60] = '\0';
+		fprintf(outfile, "%s\n", str);
+	}
+}
+
+static void addLongNodeToSequence(char * sequence, Node * node, Coordinate offset) {
+	Coordinate position;
+	char *string = expandNodeFragment(node, 0, getNodeLength(node),
+					  getWordLength(graph));
+	int wordShift = getWordLength(graph) - 1;
+
+	for (position = 0; position < strlen(string); position++) 
+	    if (sequence[offset + position - wordShift] == 'N')
+		sequence[offset + position - wordShift] = string[position]; 
+	free(string);
+}
+
+static void addShortNodeToSequence(char * sequence, Node * node, Coordinate offset) {
+	Coordinate position;
+	char *string = expandNodeFragment(node, 0, getNodeLength(node),
+					  getWordLength(graph));
+	int wordShift = getWordLength(graph) - 1;
+
+	for (position = 0; position < strlen(string); position++) 
+	    if (sequence[offset + position] == 'N')
+		sequence[offset + position] = string[position]; 
+
+	free(string);
+	string = expandNodeFragment(getTwinNode(node), 0, getNodeLength(node),
+				      getWordLength(graph));
+
+	for (position = 0; position < strlen(string); position++) 
+	    if (sequence[offset - wordShift + getNodeLength(node) - 1 - position] == 'N')
+		sequence[offset - wordShift + getNodeLength(node) - 1 - position] = revComp(string[position]); 
+	free(string);
+}
+
+static void addNodeToSequence(char * sequence, Node * node, Coordinate offset) {
+	int wordShift = getWordLength(graph) - 1;
+
+	// Add sequence
+	if (getNodeLength(node) >= wordShift) 
+		addLongNodeToSequence(sequence, node, offset);
+	else
+		addShortNodeToSequence(sequence, node, offset);
+}
+
+static void printContigSequence(FILE * outfile, Transcript * transcript, IDnum startIndex, IDnum finishIndex, Coordinate * offsets, Coordinate * contigLengths) 
+{
+	IDnum index;
+	Coordinate offset = getWordLength(graph) - 1;
+	char * sequence = nSequence(getTranscriptLength(transcript)); 
+
+	// Extract sequence
+	for (index = startIndex; index <= finishIndex; index++) {
+	    addNodeToSequence(sequence, getTranscriptContig(transcript, index), offset);
+	    offset += getNodeLength(getTranscriptContig(transcript, index));
+	    if (index < getTranscriptContigCount(transcript) - 1)
+		    offset += getTranscriptDistance(transcript, index);
+	}
+	sequence[offset] = '\0';
+
+	// Count initial N's
+	for (offset = 0; offset < strlen(sequence); offset++)
+		if (sequence[offset] != 'N')
+			break;
+	offsets[finishIndex] += offset;
+	contigLengths[finishIndex] = strlen(sequence) - offset;
+	
+	printFastA(outfile, sequence + offset);
+	free(sequence);
+}
 
 static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * transcript, 
 			     IDnum startIndex, IDnum finishIndex, Graph * graph, 
-			     IDnum locusID, IDnum transcriptID, IDnum internalIndex, IDnum iid)
+			     IDnum locusID, IDnum transcriptID, Coordinate * offsets, Coordinate * contigLengths, IDnum internalIndex, IDnum iid)
 {
 	Coordinate start;
 	PassageMarkerI marker;
@@ -368,112 +470,29 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 	IDnum nodeIndex;
 	Node * node;
 	boolean firstUniqueMet = false;
-	Coordinate length = 0;
 	int column = 0;
-	Nucleotide nucleotide;
+	Coordinate totalLength = 0;
+
+	// Check if any material to work with
+	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++)
+		totalLength += getNodeLength(getTranscriptContig(transcript, nodeIndex));
+	if (totalLength == 0)
+		return;
+
+	// Compute offset within transcript
+	for (nodeIndex = 0; nodeIndex < startIndex; nodeIndex++)
+		offsets[finishIndex] += getNodeLength(getTranscriptContig(transcript, nodeIndex)) + getTranscriptDistance(transcript, nodeIndex);
 
 	fprintf(outfile, "{CTG\n");
 	fprintf(outfile, "iid:%ld\n", (long) iid);
 	fprintf(outfile, "eid:%ld-%ld-%ld\n", (long) locusID, (long) transcriptID, (long) internalIndex);
 
 	fprintf(outfile, "seq:\n");
-	for (nodeIndex = startIndex; nodeIndex <= finishIndex; nodeIndex++) {
-		node = getTranscriptContig(transcript, nodeIndex);
-		
-		// If first unique met, print initial k-mer
-		if (!firstUniqueMet && getNodeLength(node) >= wordShift) {
-			for (start = 0; start < wordShift; start++) {
-				nucleotide = getNucleotideInNode(getTwinNode(node), getNodeLength(node) - start - 1);
-#ifndef COLOR
-				nucleotide = 3 - nucleotide;
-#endif
-				switch (nucleotide) {
-				case ADENINE:
-					fprintf(outfile, "A");
-					break;	
-				case CYTOSINE:
-					fprintf(outfile, "C");
-					break;	
-				case GUANINE:
-					fprintf(outfile, "G");
-					break;	
-				case THYMINE:
-					fprintf(outfile, "T");
-					break;	
-				default:
-					abort();
-				}
-
-				if (column++ == 60) {
-					fprintf(outfile, "\n");
-					column = 0;
-				}
-			}
-			
-			length += wordShift;
-			firstUniqueMet = true;
-		}
-
-		// Print proper sequence
-		if (!firstUniqueMet) {
-			for (start = 0; start < getNodeLength(node); start++) {
-				nucleotide = getNucleotideInNode(getTwinNode(node), getNodeLength(node) - start - 1);
-#ifndef COLOR
-				nucleotide = 3 - nucleotide;
-#endif
-				switch (nucleotide) {
-				case ADENINE:
-					fprintf(outfile, "A");
-					break;	
-				case CYTOSINE:
-					fprintf(outfile, "C");
-					break;	
-				case GUANINE:
-					fprintf(outfile, "G");
-					break;	
-				case THYMINE:
-					fprintf(outfile, "T");
-					break;	
-				}
-
-				if (column++ == 60) {
-					fprintf(outfile, "\n");
-					column = 0;
-				}
-			}
-		} else {
-			for (start = 0; start < getNodeLength(node); start++) {
-				nucleotide = getNucleotideInNode(node, start);
-
-				switch (nucleotide) {
-				case ADENINE:
-					fprintf(outfile, "A");
-					break;	
-				case CYTOSINE:
-					fprintf(outfile, "C");
-					break;	
-				case GUANINE:
-					fprintf(outfile, "G");
-					break;	
-				case THYMINE:
-					fprintf(outfile, "T");
-					break;	
-				}
-
-				if (column++ == 60) {
-					fprintf(outfile, "\n");
-					column = 0;
-				}
-			}
-		}
-
-		length += getNodeLength(node);
-	}
-	fprintf(outfile, "\n.\n");
+	printContigSequence(outfile, transcript, startIndex, finishIndex, offsets, contigLengths);
 
 	fprintf(outfile, "qlt:\n");
 	column = 0;
-	for (start = 0; start < length; start++) {
+	for (start = 0; start < contigLengths[finishIndex]; start++) {
 		fprintf(outfile, "I");
 
 		if (column++ == 60) {
@@ -522,8 +541,6 @@ static void exportAMOSContig(FILE * outfile, ReadSet * reads, Transcript * trans
 		}
 
 		offset += getNodeLength(node);
-		if (firstUniqueMet == 0) 
-			offset += wordShift;
 	}
 
 	fprintf(outfile, "}\n");
@@ -534,63 +551,34 @@ static void exportAMOSTranscript(FILE* outfile, ReadSet * reads, Transcript * tr
 	IDnum smallIndex = 0;
 	static IDnum iid = 1;
 	IDnum contigIndex = iid;
-	int wordShift = getWordLength(graph) - 1;
 	IDnum nodeIndex;
-	boolean uniqueBunch = false;
 	IDnum startIndex = 0;
-	Coordinate start;
-	Coordinate contigLength;
-	Node * node;
+	Coordinate * contigLengths = callocOrExit(getTranscriptContigCount(transcript), Coordinate);
+	Coordinate * offsets = callocOrExit(getTranscriptContigCount(transcript), Coordinate);
 
-	contigLength = 0;
-	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++) {
-		node = getTranscriptContig(transcript, nodeIndex);
-		contigLength += getNodeLength(node);
-		if (getNodeLength(node) >= wordShift)
-			uniqueBunch = true;
-
-		if (nodeIndex == getTranscriptContigCount(transcript) - 1 || getTranscriptDistance(transcript, nodeIndex) > 0) {
-			if (contigLength > 0) {
-				exportAMOSContig(outfile, reads, transcript, startIndex, nodeIndex, graph, 
-							 locusID, transcriptID, smallIndex++, iid++);
-				startIndex = nodeIndex + 1;
-			}
-			uniqueBunch = false;
-			contigLength = 0;
-		} 
-	}
+	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++)
+		if (nodeIndex == getTranscriptContigCount(transcript) - 1 || getTranscriptDistance(transcript, nodeIndex) > 0)
+			    exportAMOSContig(outfile, reads, transcript, startIndex, nodeIndex, graph, 
+						     locusID, transcriptID, offsets, contigLengths, smallIndex++, iid++);
 
 	fprintf(outfile, "{SCF\n");
 	fprintf(outfile, "eid:%ld-%ld\n", (long) locusID, (long) transcriptID);
 
-	uniqueBunch = false;
-	start = 0;
-	contigLength = 0;
 	for (nodeIndex = 0; nodeIndex < getTranscriptContigCount(transcript); nodeIndex++) {
-		node = getTranscriptContig(transcript, nodeIndex);
-		contigLength += getNodeLength(node);
-		if (getNodeLength(node) >= wordShift)
-			uniqueBunch = true;
-
 		if (nodeIndex == getTranscriptContigCount(transcript) - 1 || getTranscriptDistance(transcript, nodeIndex) > 0) {
-			if (contigLength > 0) {
-				if (uniqueBunch)
-					contigLength += wordShift;
-
+			if (contigLengths[nodeIndex] > 0) {
 				fprintf(outfile, "{TLE\n");
-				fprintf(outfile, "off:%lld\n", (long long) start);
-				fprintf(outfile, "clr:0,%lld\n", (long long) contigLength);
+				fprintf(outfile, "off:%lld\n", (long long) offsets[nodeIndex]);
+				fprintf(outfile, "clr:0,%lld\n", (long long) contigLengths[nodeIndex]);
 				fprintf(outfile, "src:%ld\n", (long) contigIndex++);
 				fprintf(outfile, "}\n");
 			}
-			start += contigLength;
-			start += getTranscriptDistance(transcript, nodeIndex);
-			uniqueBunch = false;
-			contigLength = 0;
 		} 
 	}
 
 	fprintf(outfile, "}\n");
+	free(offsets);
+	free(contigLengths);
 }
 
 static void exportAMOSLocus(FILE * outfile, ReadSet * reads, Locus * locus, IDnum locusID, Coordinate minTransLength,
@@ -1053,82 +1041,6 @@ void exportTranscriptMappings(Locus * loci, IDnum locusCount,
 	fclose(outfile);
 }
 
-static char revComp(char base) {
-	if (base == 'A')
-		return 'T';
-	if (base == 'T')
-		return 'A';
-	if (base == 'G')
-		return 'C';
-	if (base == 'C')
-		return 'G';
-	return 'N';
-}
-
-static char * nSequence(Coordinate length) {
-	char * sequence = callocOrExit(length + 1, char);
-	Coordinate position;
-
-	for (position = 0; position < length; position++) 
-		sequence[position] = 'N';
-	sequence[length] = '\0';
-
-	return sequence;
-}
-
-static void printFastA(FILE * outfile, char * sequence) {
-	Coordinate position;
-	size_t length = strlen(sequence);
-	char str[100];
-
-	for (position = 0; position < length; position += strlen(str)) {
-		strncpy(str, sequence + position, 60);
-		str[60] = '\0';
-		fprintf(outfile, "%s\n", str);
-	}
-}
-
-static void addLongNodeToSequence(char * sequence, Node * node, Coordinate offset) {
-	Coordinate position;
-	char *string = expandNodeFragment(node, 0, getNodeLength(node),
-					  getWordLength(graph));
-	int wordShift = getWordLength(graph) - 1;
-
-	for (position = 0; position < strlen(string); position++) 
-	    if (sequence[offset + position - wordShift] == 'N')
-		sequence[offset + position - wordShift] = string[position]; 
-	free(string);
-}
-
-static void addShortNodeToSequence(char * sequence, Node * node, Coordinate offset) {
-	Coordinate position;
-	char *string = expandNodeFragment(node, 0, getNodeLength(node),
-					  getWordLength(graph));
-	int wordShift = getWordLength(graph) - 1;
-
-	for (position = 0; position < strlen(string); position++) 
-	    if (sequence[offset + position] == 'N')
-		sequence[offset + position] = string[position]; 
-
-	free(string);
-	string = expandNodeFragment(getTwinNode(node), 0, getNodeLength(node),
-				      getWordLength(graph));
-
-	for (position = 0; position < strlen(string); position++) 
-	    if (sequence[offset - wordShift + getNodeLength(node) - 1 - position] == 'N')
-		sequence[offset - wordShift + getNodeLength(node) - 1 - position] = revComp(string[position]); 
-	free(string);
-}
-
-static void addNodeToSequence(char * sequence, Node * node, Coordinate offset) {
-	int wordShift = getWordLength(graph) - 1;
-
-	// Add sequence
-	if (getNodeLength(node) >= wordShift) 
-		addLongNodeToSequence(sequence, node, offset);
-	else
-		addShortNodeToSequence(sequence, node, offset);
-}
 
 static void exportTranscript(Transcript * transcript, IDnum locusID,
 			     IDnum transID, IDnum transcriptCount, FILE * outfile)
@@ -1143,15 +1055,8 @@ static void exportTranscript(Transcript * transcript, IDnum locusID,
 
 	    // Increment offset
 	    offset += getNodeLength(getTranscriptContig(transcript, index));
-	    if (index < getTranscriptContigCount(transcript) - 1) {
-		    // Ignoring NCBI request for 10bp gaps
-		    //if (getTranscriptDistance(transcript, index) < getWordLength(graph) && getNodeLength(getTranscriptContig(transcript, index+1)) >= getWordLength(graph) - 1)
-		    //	    offset += getTranscriptDistance(transcript, index);
-		    //else if (getTranscriptDistance(transcript, index) > 0 && getTranscriptDistance(transcript, index) < 10)
-		    //	    offset += 10;
-		    //else
+	    if (index < getTranscriptContigCount(transcript) - 1)
 		    offset += getTranscriptDistance(transcript, index);
-	    }
 	}
 
 	// Count initial N's
