@@ -230,7 +230,25 @@ new\_directory/contig-ordering.txt --
 	Here the cumulative length is the total length of the transcript assembly from
 	its 5' end to the 3' end of that contig. This allows you to locate the contig
 	sequence within the transcript sequence.
-	
+\item new\_directory/Connections.txt --
+	If you add the flag `-connections yes' to your Oases command line, it will produce 
+	tab-delimited file which describes its analysis of the graph and its structure. 
+	For each line you will find:
+\begin{itemize}
+	\item a node ID A (see the LastGraph file for data, a minus sign indicates the reverse complement of that node),
+	\item another node ID B,
+	\item the number of reads which directly span the gap from the 3' end of A to the 3' end of B (the contigs are in opposite orientation!),
+	\item the number of read pairs which connect the two reads in the above orientation,
+	\item the estimated distance from the middle of A to the middle of B,
+	\item the length of A,
+	\item the length of B,
+	\item the corrected distance from the 3' end of A to the 3' end of B,
+	\item the variance of the estimator,
+	\item the number of paired reads on the forward strand of A (i.e. pointing towards B),
+	\item the number of paired reads on the forward strand of B (i.e. pointing towards A),
+	\item the expected number of read pairs you would expect given the above parameters (to be compared to the observed number above),
+	\item Oases' call on that connection (OK = valid, NG = not good).
+\end{itemize}
 \end{enumerate}	
 \section{FAQ and Practical considerations}
 

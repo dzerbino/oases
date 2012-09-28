@@ -295,3 +295,10 @@ void revert(Locus * locus)
 	for (index = 0; index < getContigCount(locus); index++)
 		locus->contigs[index] = getTwinNode(getContig(locus, index));
 }
+
+void printOasesConnections(Category * categories, char * filename) {
+	FILE * file = fopen(filename, "w");
+	if (!file) 
+		exitErrorf(-1, false, "Could not open %s!i Exiting...\n", filename);
+	printOasesConnections2(categories, file);
+}

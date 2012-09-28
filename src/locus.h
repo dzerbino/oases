@@ -58,4 +58,5 @@ Locus * reallocateLocusArray(Locus * array, IDnum newsize);
 void clearLocus(Locus * locus);
 void cleanLocusMemory(Locus * loci, IDnum locusCount);
 Locus * getLocus(Locus * loci, IDnum index);
+void printOasesConnections(Category * categories, char * filename);
 #endif

@@ -80,6 +80,7 @@ static void printUsage()
 	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.01)");
 	puts("\t-scaffolding <yes|no>\t\t:Allow gaps in transcripts (default: no)");
 	puts("\t-degree_cutoff <integer>\t: Maximum allowed degree on either end of a contigg to consider it 'unique' (default: 3)");
+	puts("\t-connections <yes|no>\t\t:Print out the connections between contigs (default: no)");
 	puts("");
 	puts("Output:");
 	puts("\tdirectory/transcripts.fa");
@@ -91,7 +92,7 @@ int main(int argc, char **argv)
 {
 	Graph *graph;
 	char *directory, *graphFilename, *seqFilename, *transcriptFilename,
-	    *eventFilename;
+	    *eventFilename, *connectionsFilename;
 	Coordinate insertLength[CATEGORIES];
 	Coordinate insertLengthLong = -1;
 	Coordinate std_dev[CATEGORIES];
@@ -117,6 +118,7 @@ int main(int argc, char **argv)
 	boolean merge = false;
 	boolean exportAlignments = false;
 	boolean isBinary = false;
+	boolean connects = false;
 
 	setProgramName("oases");
 
@@ -151,6 +153,7 @@ int main(int argc, char **argv)
 	seqFilename = mallocOrExit(strlen(directory) + 100, char);
 	transcriptFilename = mallocOrExit(strlen(directory) + 100, char);
 	eventFilename = mallocOrExit(strlen(directory) + 100, char);
+	connectionsFilename = mallocOrExit(strlen(directory) + 100, char);
 
 	// Argument parsing
 	for (arg_index = 2; arg_index < argc; arg_index++) {
@@ -173,6 +176,9 @@ int main(int argc, char **argv)
 			setPairedThreshold(pairedThreshold);
 		} else if (strcmp(arg, "-alignments") == 0) {
 			exportAlignments =
+			    (strcmp(argv[arg_index], "yes") == 0);
+		} else if (strcmp(arg, "-connects") == 0) {
+			connects =
 			    (strcmp(argv[arg_index], "yes") == 0);
 		} else if (strcmp(arg, "-amos_file") == 0) {
 			exportAssembly =
@@ -345,6 +351,12 @@ int main(int argc, char **argv)
 	    removeRedundantTranscripts(graph);
 	    loci = reextractGraphLoci(graph, &locusCount);
 	    recomputeTranscripts(&loci, &locusCount);
+	}
+
+	if (connects) {
+		strcpy(connectionsFilename, directory);
+		strcat(connectionsFilename, "/Connections.txt");
+		printOasesConnections(reads->categories, connectionsFilename);
 	}
 
 	strcpy(transcriptFilename, directory);

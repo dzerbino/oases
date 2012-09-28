@@ -43,7 +43,7 @@ IDnum getConnectionDirectCount(Connection * connect);
 IDnum getConnectionPairedCount(Connection * connect);
 
 // Debugging
-void printOasesConnections(Category * cats);
+void printOasesConnections2(Category * cats, FILE * file);
 
 // Constant params for filtering
 void scaffold_setPairedThreshold(double pairedThreshold);

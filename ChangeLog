@@ -143,3 +143,5 @@ V 0.2.08
 
 V 0.2.09
 - Store stats in Log file
+- Print out connections if requested
+

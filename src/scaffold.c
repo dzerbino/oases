@@ -1022,7 +1022,7 @@ void defineUniqueNodes(Graph * graph)
 		defineUniqueness(getNodeInGraph(graph, index));
 }
 
-void printOasesConnections(Category * categories)
+void printOasesConnections2(Category * categories, FILE * file)
 {
 	IDnum maxNodeIndex = nodeCount(graph) * 2 + 1;
 	IDnum index;
@@ -1032,15 +1032,15 @@ void printOasesConnections(Category * categories)
 	IDnum nodes = nodeCount(graph);
 	Category cat;
 
-	puts("CONNECT IDA IDB dcount pcount dist lengthA lengthB var countA countB coordA coordB real exp distance test");
+	velvetFprintf(file,"IDA\tIDB\tdcount\tpcount\tdist\tlengthA\tlengthB\tcorr_dist\tvar\tcountA\tcountB\texp\ttest\n");
 
 	for (index = 0; index < maxNodeIndex; index++) {
 		node = getNodeInGraph(graph, index - nodeCount(graph));
 		for (connect = scaffold[index]; connect != NULL;
 		     connect = next) {
 			next = connect->next;
-			printf
-			    ("CONNECT %ld %ld %ld %ld %lld %lld %lld %f %ld %ld",
+			velvetFprintf(file,
+			    "%ld\t%ld\t%ld\t%ld\t%lld\t%lld\t%lld\t%lld\t%f\t%ld\t%ld\t%ld",
 			     (long) index - nodeCount(graph),
 			     (long) getNodeID(connect->destination),
 			     (long) connect->direct_count,
@@ -1048,44 +1048,26 @@ void printOasesConnections(Category * categories)
 			     (long long) getConnectionDistance(connect),
 			     (long long) getNodeLength(node), (long long)
 			     getNodeLength(connect->destination),
+			     (long long) (getConnectionDistance(connect)
+					    - (getNodeLength(node) +
+					       getNodeLength
+					       (connect->destination)) /
+					    2),
 			     connect->variance,
 			     (long) getNodeReadCount(node, graph),
 			     (long) getNodeReadCount(connect->destination,
-						     graph));
-			if (markerCount(node) == 1
-			    && markerCount(connect->destination) == 1)
-				printf(" %lld %lld %lld", (long long)
-				       getPassageMarkerFinish(getMarker
-							      (node)),
-				       (long long)
-				       getPassageMarkerFinish(getMarker
-							      (connect->
-							       destination)),
-				       (long
-					long) (getPassageMarkerFinish
-					       (getMarker(node)) -
-					       getPassageMarkerFinish
-					       (getMarker
-						(connect->destination))));
-			else
-				printf(" ? ? ?");
-			printf(" %ld",
-			       (long) expectedNumberOfConnections(index -
+						     graph),
+			     (long) expectedNumberOfConnections(index -
 								  nodeCount
 								  (graph),
 								  connect,
 								  counts,
-								  0));
-			printf(" %lld",
-			       (long long) (getConnectionDistance(connect)
-					    - (getNodeLength(node) +
-					       getNodeLength
-					       (connect->destination)) /
-					    2));
+								  0)
+			     );
 			if (testConnection(index - nodes, connect, counts))
-				puts(" OK");
+				velvetFprintf(file, "\tOK\n");
 			else
-				puts(" NG");
+				velvetFprintf(file, "\tNG\n");
 		}
 	}
 
