@@ -16,7 +16,7 @@
 
 \section{For impatient people}
 \begin{verbatim}
-> velveth directory 21,23 data/reads.fa
+> velveth directory 21,23 data/test_reads.fa
 > velvetg directory_21 -read_trkg yes
 > oases directory_21
 > ls directory_21
@@ -32,7 +32,7 @@
 Or use the python script oases\_pipeline.py.
 
 \begin{verbatim}
-> python oases_pipeline.py -m 21 -M 23 data/reads.fa
+> python scripts/scripts/oases_pipeline.py -m 21 -M 23 -d 'data/test_reads.fa'
 \end{verbatim}
 
 \section{Installing Oases} 
@@ -166,7 +166,7 @@ With version 0.2 of Oases comes a new python script that runs the individual sin
 First notice the options for the script below \
 
 \begin{verbatim}
-python oases_pipeline.py
+python scripts/oases_pipeline.py
 Options:
   -h, --help            show this help message and exit
   -d FILES, --data=FILES
@@ -192,22 +192,22 @@ Options:
 We will illustrate the usage of the script with the two most common scenarios single-end and paired-end reads. \\
 First assume we \ want to compute a merged assembly from 21 to 35 with Oases on a single-end data set that is strand specific and retain transcripts of minimum length 100. We want to save the assemblies in folders that start with singleEnd :
 \begin{verbatim}
-python oases_pipeline.py -m 21 -M 35 -o singleEnd 
--d " -strand_specific yes data/reads.fa "
--p " -min_trans_lgth 100 " 
+python scripts/oases_pipeline.py -m 21 -M 35 -o singleEnd 
+-d ' -strand_specific yes data/test_reads.fa '
+-p ' -min_trans_lgth 100 ' 
 \end{verbatim}
 
 The script creates a folder named singleEnd\_$k$ for each single-$k$ assembly and one folder named singleEndMerged that contains the merged transcripts for all single-$k$ assemblies in the \emph{transcripts.fa} file.
 
 Now assume we have paired-end reads with insert length 300 and we want to compute a merged assembly from 17 to 40. We want to save the assemblies in the folders that start with pairedEnd
 \begin{verbatim}
-python oases_pipeline.py -m 17 -M 40 -o pairedEnd 
--d " -shortPaired  data/reads.fa "
--p " -ins_length 300 "
+python scripts/oases_pipeline.py -m 17 -M 40 -o pairedEnd 
+-d ' -shortPaired  data/test_reads.fa '
+-p ' -ins_length 300 '
 \end{verbatim}
 Now say we found that using k=17 was a bit too low and we want to look at a different merged assembly range. Instead of redoing all the time consuming assemblies we can re-run the merged module on a different range from 21 to 40 like this:
 \begin{verbatim}
-python oases_pipeline.py -m 21 -M 40 -r -o pairedEnd  
+python scripts/oases_pipeline.py -m 21 -M 40 -r -o pairedEnd  
 \end{verbatim}
 \NOTE \  that it is essential when you re-run the merged assembly for the script to function properly to give the exact same output prefix with the $-o$ parameter.
 \section{Output files}
