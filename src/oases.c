@@ -83,7 +83,6 @@ static void printUsage()
 	puts("");
 	puts("Output:");
 	puts("\tdirectory/transcripts.fa");
-	puts("\tdirectory/splicing_events.txt");
 	puts("\tdirectory/contig-ordering.txt");
 }
 
