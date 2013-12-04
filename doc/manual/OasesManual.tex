@@ -26,7 +26,7 @@
 
 > velveth mergedAssembly 23 -long directory*/transcripts.fa
 > velvetg mergedAssembly -read_trkg yes -conserveLong yes
-> oases mergedAssembly -merge
+> oases mergedAssembly -merge yes
 \end{verbatim}
 
 Or use the python script oases\_pipeline.py.
@@ -157,7 +157,7 @@ After running the previous process for different values of $k$ it is necessary t
 
 > velveth MergedAssembly/ K -long directory*/transcripts.fa
 > velvetg MergedAssembly/ -read_trkg yes -conserveLong yes
-> oases MergedAssembly/ -merge
+> oases MergedAssembly/ -merge yes
 \end{verbatim}
 \NOTE \ that the transcripts.fa files need to be given as \emph{long}. \\
 
