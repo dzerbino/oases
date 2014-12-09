@@ -78,7 +78,7 @@ static void printUsage()
 	puts("\t-merge <yes|no>\t\t:Preserve contigs mapping onto long sequences to be preserved from coverage cutoff (default: no)");
 	puts("\t-edgeFractionCutoff <floating-point>\t: Remove edges which represent less than that fraction of a nodes outgoing flow");
 	puts("\t\tMust be part of the open interval ]0,1[ (default: 0.01)");
-	puts("\t-scaffolding <yes|no>\t\t:Allow gaps in transcripts (default: no)");
+	puts("\t-scaffolding <yes|no>\t\t: Allow gaps in transcripts (default: no)");
 	puts("\t-degree_cutoff <integer>\t: Maximum allowed degree on either end of a contigg to consider it 'unique' (default: 3)");
 	puts("");
 	puts("Output:");
