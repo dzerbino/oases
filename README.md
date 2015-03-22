@@ -25,16 +25,16 @@ A good amount of physical memory (12GB to start with, more is no luxury) is reco
 
 There are various compile time options that can be used:
 
-Option | Default | Description
--------+---------+------------
-CATEGORIES | 2 | Maxium number of different DNA libraries
-MAXKMERLENGTH | 64 | Maximum k-mer value supported
-OPENMP | 0 | Enable OpenMP multithreading support
-BIGASSEMBLY | 0 | FIXME
-VBIGASSEMBLY | 0 | FIXME
-LONGSEQUENCES | 0 | FIXME
-SINGLE_COV_CAT | 0 | FIXME
-BUNDLEDZLIB | 0 | Use the bundled zlib 1.2.3 instead of system one
+| Option | Default | Description
+| -------+---------+------------
+| CATEGORIES | 2 | Maxium number of different DNA libraries
+| MAXKMERLENGTH | 64 | Maximum k-mer value supported
+| OPENMP | 0 | Enable OpenMP multithreading support
+| BIGASSEMBLY | 0 | FIXME
+| VBIGASSEMBLY | 0 | FIXME
+| LONGSEQUENCES | 0 | FIXME
+| SINGLE_COV_CAT | 0 | FIXME
+| BUNDLEDZLIB | 0 | Use the bundled zlib 1.2.3 instead of system one
 
 You can apply them as in this example which changes three options:
 
@@ -67,14 +67,14 @@ Or use the python script ```oases_pipeline.py```:
 
 ##For patient people
 
-To run Oases it is recommended to run an array of single-$k$ assemblies,
-for different values of $k$ (i.e. the hash length). These assemblies are
+To run Oases it is recommended to run an array of single-_k_ assemblies,
+for different values of _k_ (i.e. the hash length). These assemblies are
 then merged into a final assembly.
 
-###Single-$k$ assemblies
+###Single-_k_ assemblies
 
-Each single-$k$ assembly consists of a simple Velvet run, followed by an
-Oases run. As in Velvet, the hash length $k$ is an odd integer. Velveth
+Each single-_k_ assembly consists of a simple Velvet run, followed by an
+Oases run. As in Velvet, the hash length _k_ is an odd integer. Velveth
 is run normally and velvetg is run with only one option:
 
     > velveth directory_k k reads.fa
@@ -137,17 +137,16 @@ as unreliable if it is supported by less than a given number (by default
 
     oases directory -min_pair_count 5
 
-### Filtering the output {#filtering}
+### Filtering the output
 
 By setting the minimum transfrag length (by default 100bp), the user can
 control what is being output in the results files:
 
     > oases directory -min_trans_lgth 200
 
-Assembly merging
-----------------
+### Assembly merging
 
-After running the previous process for different values of $k$ it is
+After running the previous process for different values of _k_ it is
 necessary to merge the results of all these assemblies (contained in
 ```transcripts.fa``` files) into a single, non redundant assembly. To
 realize this merge, it is necessary to choose a value of $K$.
@@ -164,11 +163,10 @@ MergedAssembly.
 
  that the transcripts.fa files need to be given as *long*.\
 
-Using the supplied python script
---------------------------------
+### Using the supplied python script
 
 With version 0.2 of Oases comes a new python script that runs the
-individual single-$k$ assemblies and the new merge module. We highly
+individual single-_k_ assemblies and the new merge module. We highly
 recommend to use the script for the analyses, but please read the
 previous subsections [insert]-[filtering] for the Oases params that you
 need to supply to the script. However, as the script also runs velvet
@@ -208,9 +206,9 @@ folders that start with singleEnd :
     -d ' -strand_specific yes data/test_reads.fa '
     -p ' -min_trans_lgth 100 ' 
 
-The script creates a folder named singleEnd\_$k$ for each single-$k$
+The script creates a folder named singleEnd\__k_ for each single-_k_
 assembly and one folder named singleEndMerged that contains the merged
-transcripts for all single-$k$ assemblies in the *transcripts.fa* file.
+transcripts for all single-_k_ assemblies in the *transcripts.fa* file.
 
 Now assume we have paired-end reads with insert length 300 and we want
 to compute a merged assembly from 17 to 40. We want to save the
@@ -231,20 +229,19 @@ range from 21 to 40 like this:
 script to function properly to give the exact same output prefix with
 the $-o$ parameter.
 
-Output files
-============
+## Output files
 
 Oases produces two output files. The predicted transcript sequences can
 be found in *transcripts.fa* and the file *contig-ordering.txt* explains
 the composition of these transcripts, see below.
 
-1.  new\_directory/transcripts.fa – A FASTA file containing the
+1.  new_directory/transcripts.fa – A FASTA file containing the
     transcripts imputed directly from trivial clusters of contigs (loci
     with less than two transcripts and Confidence Values = 1) and the
     highly expressed transcripts imputed by dynamic programming (loci
     with more than 2 transcripts and Confidence Values $<$1).
 
-2.  new\_directory/contig-ordering.txt – A hybrid file which describes
+2.  new_directory/contig-ordering.txt – A hybrid file which describes
     the contigs contained in each locus in FASTA format, interlaced with
     one line summaries of the transcripts generated by dynamic
     programming. Each line is a string of atoms defined as:
@@ -255,8 +252,7 @@ the composition of these transcripts, see below.
     assembly from its 5’ end to the 3’ end of that contig. This allows
     you to locate the contig sequence within the transcript sequence.
 
-FAQ and Practical considerations
-================================
+## FAQ and Practical considerations
 
 ### I am running out of memory. What should I do? 
 
@@ -268,7 +264,7 @@ the sample being sequenced how much memory is used. Below we give
 examples of pre-processing steps that lead to a decrease in memory
 consumption, sorted in order of importance.
 
-*Avoid overlapping reads*
+####Avoid overlapping reads
 
 In our experience, if insert lengths are so short that paired reads
 overlap on their 3’ ends, i.e., if insert length $<$ 2 $\cdot$ read
@@ -281,7 +277,7 @@ Bioinformatics 2011)*. Otherwise it is possible to clip reads so that
 their overlap is strictly shorter than the hash length, that might lead
 to a huge loss of data however.\
 
-*Avoid bad quality reads*
+#### Avoid bad quality reads
 
 Reads with many errors create new nodes in the de Bruijn graph, all of
 which are later discarded by the error removal steps. Removing the
@@ -307,20 +303,20 @@ bad quality (in no particular order):
 5.  bwa - <http://bio-bwa.sourceforge.net/bwa.shtml> (command line *aln*
     option)
 
-  that when you use paired-end sequences and reads are discarded from
+Note that when you use paired-end sequences and reads are discarded from
 the file you need to make sure that the fasta/fastq file that you give
 to velveth contains the paired-end reads in correct pairing. Also if the
 read clipper retains single end reads from a pair, it is advisable to
 give them as a second dataset of type *-short* to avoid data loss.
 
-*Trim sequencing adapters*
+#### Trim sequencing adapters
 
 Depending on your sequencing experiment, some of the reads may have
 adapters that were used, e.g, during library preparation. These adapters
 should be trimmed. You can use the Fastx-toolkit or ea-utils to do that,
 among many others, see above.
 
-*Remove duplicate reads*
+#### Remove duplicate reads
 
 Especially for paired-end datasets it happens that the exact same read
 sequence is found a large number of times. Again you can use some of the
