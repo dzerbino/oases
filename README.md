@@ -284,7 +284,7 @@ twice the length, this prevents the early filtering of low coverage reads.
 This means that even small datasets may require huge amounts of memory. A way
 to avoid the problem is to join paired-end reads that overlap.
 One tool to do this is
- (PEAR)[http://sco.h-its.org/exelixis/web/software/pear/doc.html].
+[PEAR](http://sco.h-its.org/exelixis/web/software/pear/doc.html).
 
 #### Avoid bad quality reads
 
@@ -344,18 +344,18 @@ gene prediction tools like GlimmerHMM, SNAP or AUGUSTUS.
 
 ## Mailing list:
 
-For questions/requests/etc. you can subscribe to the users’ mailing list: 
-```oases-users@ebi.ac.uk```. 
-You can sign up at the
-[oases-users listserver](http://listserver.ebi.ac.uk/mailman/listinfo/oases-users).
+For questions/requests/etc. you can subscribe to the users’ mailing list
+at the [oases-users listserver](http://listserver.ebi.ac.uk/mailman/listinfo/oases-users).
 
 ##Paper
+
 Schulz MH, Zerbino DR, Vingron M, Birney E. 
 _Oases: robust de novo RNA-seq assembly across the dynamic range of expression levels._
 __Bioinformatics__ 2012 Apr 15;28(8):1086-92. 
 [PubMed](http://www.ncbi.nlm.nih.gov/pubmed/22368243)
 
 ##Authors
+
 * Daniel Zerbino <dzerbino@soe.ucsc.edu>
 * Marcel Schulz <marcel.schulz@molgen.mpg.de>
 
