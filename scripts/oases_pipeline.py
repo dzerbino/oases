@@ -21,6 +21,15 @@ def getOptions():
 	parser.add_option('-r', '--mergeOnly',dest='mergeOnly',help='Only do the merge',action='store_true',default=False)
 	parser.add_option('-c', '--clean',dest='clean',help='Clean temp files',action='store_true',default=False)
 	options, args = parser.parse_args()
+        if options.kmin % 2 == 0:
+                print '-m / --kmin must be an odd number'
+                sys.exit(2);
+        if options.kmax % 2 == 0:
+                print '-M / --kmax must be an odd number'
+                sys.exit(2);
+        if options.kstep % 2 != 0:
+                print '-s / --kstep must be an even number'
+                sys.exit(2);
 	if not options.mergeOnly and len(options.data) == 0:
 		parser.print_help()
 		print ''
