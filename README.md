@@ -2,35 +2,47 @@
 #Oases
 _De novo_ transcriptome assembler based on the Velvet genome assembler core
 
-##Authors
-*Daniel Zerbino (dzerbino@soe.ucsc.edu)
-*Marcel Schulz (marcel.schulz@molgen.mpg.de)
-
-##Paper
-Schulz MH, Zerbino DR, Vingron M, Birney E. 
-_Oases: robust de novo RNA-seq assembly across the dynamic range of expression levels._
-__Bioinformatics__ 2012 Apr 15;28(8):1086-92. 
-[http://www.ncbi.nlm.nih.gov/pubmed/22368243](PubMed)
-
 ##Requirements
-Oases should function on any standard 64bit Unix environment with a C compiler.
+Oases should function on any standard 64 bit Unix environment with a C compiler.
 A good amount of physical memory (12GB to start with, more is no luxury) is recommended.
 
 ##Installing Oases
 
-    git clone --recursive https://github.com/dzerbino/oases
-    cd oases
-    make
+    > git clone --recursive https://github.com/dzerbino/oases
+    > cd oases
+    > make
+    > ./oases --version
+    1.2.08
+
+##Quick Start
+
+    > velveth Dir 51 reads.fa
+    > velveth Dir -read_trkg yes
+    > oases Dir
+    > less Dir/transcripts.fa
 
 ##Compilation options
 
-###CATEGORIES
+There are various compile time options that can be used:
 
-###MAXKMERLENGTH
+Option | Default | Description
+-------+---------+------------
+CATEGORIES | 2 | Maxium number of different DNA libraries
+MAXKMERLENGTH | 64 | Maximum k-mer value supported
+OPENMP | 0 | Enable OpenMP multithreading support
+BIGASSEMBLY | 0 | FIXME
+VBIGASSEMBLY | 0 | FIXME
+LONGSEQUENCES | 0 | FIXME
+SINGLE_COV_CAT | 0 | FIXME
+BUNDLEDZLIB | 0 | Use the bundled zlib 1.2.3 instead of system one
 
-###OPENMP
+You can apply them as in this example which changes three options:
 
-###Running Oases
+    make OPENMP=1 CATEGORIES=4 MAXKMERLENGTH=192
+
+
+
+#Running Oases
 
 If you are not familiar with using Velvet, read Velvet’s manual first,
 as many references below will point to that document.
@@ -337,15 +349,17 @@ gene prediction tools like GlimmerHMM, SNAP or AUGUSTUS.
 ## Mailing list:
 
 For questions/requests/etc. you can subscribe to the users’ mailing list: 
-```oases-users@ebi.ac.uk```
+```oases-users@ebi.ac.uk```. 
+You can sign up at the
+[oases-users listserver](http://listserver.ebi.ac.uk/mailman/listinfo/oases-users).
 
-To do so, see
-[listserver.ebi.ac.uk/mailman/listinfo/oases-users](http://listserver.ebi.ac.uk/mailman/listinfo/oases-users)
-.
+##Paper
+Schulz MH, Zerbino DR, Vingron M, Birney E. 
+_Oases: robust de novo RNA-seq assembly across the dynamic range of expression levels._
+__Bioinformatics__ 2012 Apr 15;28(8):1086-92. 
+[PubMed](http://www.ncbi.nlm.nih.gov/pubmed/22368243)
 
-## Contact
+##Authors
+* Daniel Zerbino <dzerbino@soe.ucsc.edu>
+* Marcel Schulz <marcel.schulz@molgen.mpg.de>
 
-For specific questions/requests you can contact us at the following addresses:
-
-- Daniel Zerbino $<$<dzerbino@soe.ucsc.edu>$>$
-- Marcel Schulz: $<$<maschulz@cs.cmu.edu>$>$
