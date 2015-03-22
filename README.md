@@ -25,8 +25,8 @@ A good amount of physical memory (12GB to start with, more is no luxury) is reco
 
 There are various compile time options that can be used:
 
-| Option | Default | Description
-| -------+---------+------------
+| Option | Default | Description 
+| ------ | ------- | ------------
 | CATEGORIES | 2 | Maxium number of different DNA libraries
 | MAXKMERLENGTH | 64 | Maximum k-mer value supported
 | OPENMP | 0 | Enable OpenMP multithreading support
@@ -39,7 +39,6 @@ There are various compile time options that can be used:
 You can apply them as in this example which changes three options:
 
     make OPENMP=1 CATEGORIES=4 MAXKMERLENGTH=192
-
 
 
 #Running Oases
