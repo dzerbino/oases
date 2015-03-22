@@ -63,6 +63,7 @@ static void printUsage()
 	puts("Standard options:");
 	puts("\t--help\t\t\t\t: this help message");
 	puts("\t--version\t\t\t: print version and exit");
+	puts("\t--citation\t\t\t: print citation to Oases manuscript and exit");
 	puts("\t-ins_length2 <integer>\t\t: expected distance between two paired-end reads in the second short-read dataset (default: no read pairing)");
 	puts("\t-ins_length_long <integer>\t: expected distance between two long paired-end reads (default: no read pairing)");
 	puts("\t-ins_length*_sd <integer>\t: est. standard deviation of respective dataset (default: 10% of corresponding length)");
@@ -163,6 +164,13 @@ int main(int argc, char **argv)
 	}
 	if (strcmp(argv[1], "--version") == 0) {
 	        printf("oases %i.%i.%2.2i\n", OASES_VERSION_NUMBER, OASES_RELEASE_NUMBER, OASES_UPDATE_NUMBER);
+	        return 0;
+	}
+	if (strcmp(argv[1], "--citation") == 0) {
+	        puts("Schulz MH, Zerbino DR, Vingron M, Birney E.");
+	        puts("Oases: robust de novo RNA-seq assembly across the dynamic range of expression levels.");
+	        puts("Bioinformatics. 2012 Apr 15;28(8):1086-92");
+	        puts("doi:10.1093/bioinformatics/bts094 | PMID:22368243 | PMCID:PMC3324515");
 	        return 0;
 	}
 	// Memory allocation 
