@@ -41,14 +41,18 @@ as many references below will point to that document.
 
 ##For impatient people
 
-    > velveth directory 21,23 data/test_reads.fa
-    > velvetg directory_21 -read_trkg yes
-    > oases directory_21
-    > ls directory_21
+    # hash reads for k=31 and k=23
+    > velveth directory 31,23 data/test_reads.fa
 
+    # assemble the k=31 reads
+    > velvetg directory_31 -read_trkg yes
+    > oases directory_31
+
+    # assemble the k=23 reads
     > velvetg directory_23 -read_trkg yes
     > oases directory_23
 
+    # merge the above assemblies with a nominal k=23
     > velveth mergedAssembly 23 -long directory*/transcripts.fa
     > velvetg mergedAssembly -read_trkg yes -conserveLong yes
     > oases mergedAssembly -merge yes
@@ -76,9 +80,16 @@ If you have strand specific reads then you have to type:
 
     > velveth directory_k k -strand_specific reads.fa
 
+And if they are also FASTQ files compressed with GZIP you use the regular
+Velvet options to change the format
+
+    > velveth directory_k k -strand_specific -short -fastq.gz reads.fastq.gz
+
 Oases is then run on that directory:
 
-    > oases directory_$k
+    > oases directory_k
+
+
 
 ###Oases options
 
@@ -98,6 +109,12 @@ provide insert lengths is identical to that used in Velvet:
 
     oases directory -ins_length 500
 
+Don't forget to also ensure the reads were hashed into a _paired_ category
+at the earlier ```velveth``` stage!
+
+    > velveth directory_k k -shortPaired -fastq.gz -separate R1.fq.gz R2.fq.gz
+
+
 ### Coverage cutoff
 
 Just like Velvet, low coverage contigs are removed from the assembly.
@@ -105,7 +122,7 @@ Because genes span all the spectrum of expression levels and therefore
 coverage depths, setting the coverage cutoff does not depend on an
 expected or median coverage. Instead, the coverage cutoff is set to
 remove all the contigs whose coverage is so low that *de novo* assembly
-would be impossible anyways (by default it is set at $3x$). If you wish
+would be impossible anyways (by default it is set at 3x). If you wish
 to set it to another value, simply use the Velvet-like option:
 
     oases directory -cov_cutoff 5
@@ -117,7 +134,7 @@ a dynamic correction method: if at a given node, an edge’s coverage
 represents less than a given percentage of the sum of coverages of edges
 coming out of that node, it is removed.
 
-By default this percentage is 10% but you can set it manually:
+By default this percentage is 10% (0.1) but you can set it manually:
 
     oases directory -edgeFractionCutoff 0.01
 
@@ -141,29 +158,29 @@ control what is being output in the results files:
 After running the previous process for different values of _k_ it is
 necessary to merge the results of all these assemblies (contained in
 ```transcripts.fa``` files) into a single, non redundant assembly. To
-realize this merge, it is necessary to choose a value of $K$.
-Experiments have shown that $K=27$ works nicely for most organisms.
-Higher values for $K$ should be used if problems with missassemblies are
+realize this merge, it is necessary to choose a value of K.
+Experiments have shown that K=27 works nicely for most organisms.
+Higher values for K should be used if problems with missassemblies are
 observed. 
 
-Assume we want to create a merged assembly in a folder called
-MergedAssembly.
+Assume we want to create a merged assembly in a folder called 
+```MergedAssembly```:
 
     > velveth MergedAssembly/ K -long directory*/transcripts.fa
     > velvetg MergedAssembly/ -read_trkg yes -conserveLong yes
     > oases MergedAssembly/ -merge yes
 
- that the transcripts.fa files need to be given as *long*.\
+Note that the transcripts.fa files need to be given as *long*.
 
 ### Using the supplied python script
 
 With version 0.2 of Oases comes a new python script that runs the
 individual single-_k_ assemblies and the new merge module. We highly
 recommend to use the script for the analyses, but please read the
-previous subsections [insert]-[filtering] for the Oases params that you
+previous section for the Oases options that you
 need to supply to the script. However, as the script also runs velvet
 please consult the velvet manual for more insight. First notice the
-options for the script below
+options for the script below:
 
     python scripts/oases_pipeline.py
     Options:
@@ -184,11 +201,12 @@ options for the script below
       -r, --mergeOnly       Only do the merge
       -c, --clean           Clean temp files
 
- that the script checks if Oases version at least 0.2.01 and Velvet at
+Note that the script checks if Oases version at least 0.2.01 and Velvet at
 least 1.1.7 are installed on your path. Otherwise it will not work.
 
 We will illustrate the usage of the script with the two most common
-scenarios single-end and paired-end reads.\
+scenarios single-end and paired-end reads.
+
 First assume we  want to compute a merged assembly from 21 to 35 with
 Oases on a single-end data set that is strand specific and retain
 transcripts of minimum length 100. We want to save the assemblies in
@@ -198,17 +216,18 @@ folders that start with singleEnd :
     -d ' -strand_specific yes data/test_reads.fa '
     -p ' -min_trans_lgth 100 ' 
 
-The script creates a folder named singleEnd\__k_ for each single-_k_
+The script creates a folder named singleEnd_k for each single-k
 assembly and one folder named singleEndMerged that contains the merged
-transcripts for all single-_k_ assemblies in the *transcripts.fa* file.
+transcripts for all single-_k_ assemblies in the ```transcripts.fa``` file.
 
 Now assume we have paired-end reads with insert length 300 and we want
 to compute a merged assembly from 17 to 40. We want to save the
 assemblies in the folders that start with pairedEnd
 
-    python scripts/oases_pipeline.py -m 17 -M 40 -o pairedEnd 
-    -d ' -shortPaired  data/test_reads.fa '
-    -p ' -ins_length 300 '
+    python scripts/oases_pipeline.py 
+      -m 17 -M 40 -o pairedEnd 
+      -d ' -shortPaired  data/test_reads.fa '
+      -p ' -ins_length 300 '
 
 Now say we found that using k=17 was a bit too low and we want to look
 at a different merged assembly range. Instead of redoing all the time
@@ -217,32 +236,34 @@ range from 21 to 40 like this:
 
     python scripts/oases_pipeline.py -m 21 -M 40 -r -o pairedEnd  
 
-  that it is essential when you re-run the merged assembly for the
+Note that it is essential when you re-run the merged assembly for the
 script to function properly to give the exact same output prefix with
-the $-o$ parameter.
+the ```-o``` parameter.
 
 ## Output files
 
 Oases produces two output files. The predicted transcript sequences can
-be found in *transcripts.fa* and the file *contig-ordering.txt* explains
+be found in ```transcripts.fa``` and the file ```contig-ordering.txt``` explains
 the composition of these transcripts, see below.
 
-1.  new_directory/transcripts.fa – A FASTA file containing the
-    transcripts imputed directly from trivial clusters of contigs (loci
-    with less than two transcripts and Confidence Values = 1) and the
-    highly expressed transcripts imputed by dynamic programming (loci
-    with more than 2 transcripts and Confidence Values $<$1).
+* ```transcripts.fa``` is a FASTA file containing the
+  transcripts imputed directly from trivial clusters of contigs (loci
+  with less than two transcripts and Confidence Values = 1) and the
+  highly expressed transcripts imputed by dynamic programming (loci
+  with more than 2 transcripts and Confidence Values $<$1).
 
-2.  new_directory/contig-ordering.txt – A hybrid file which describes
-    the contigs contained in each locus in FASTA format, interlaced with
-    one line summaries of the transcripts generated by dynamic
-    programming. Each line is a string of atoms defined as:
-    \$contig\_id:\$cumulative\_length-(\$distance\_to\_next\_contig)-$>$next
-    item
+* new_directory/contig-ordering.txt – A hybrid file which describes
+  the contigs contained in each locus in FASTA format, interlaced with
+  one line summaries of the transcripts generated by dynamic programming. 
 
-    Here the cumulative length is the total length of the transcript
-    assembly from its 5’ end to the 3’ end of that contig. This allows
-    you to locate the contig sequence within the transcript sequence.
+  Each line is a string of atoms defined as:
+  contig_id:cumulative_length-(distance_to_next_contig)->nextitem
+
+  Here the cumulative length is the total length of the transcript
+  assembly from its 5’ end to the 3’ end of that contig. This allows
+  you to locate the contig sequence within the transcript sequence.
+
+
 
 ## FAQ and Practical considerations
 
@@ -256,7 +277,7 @@ the sample being sequenced how much memory is used. Below we give
 examples of pre-processing steps that lead to a decrease in memory
 consumption, sorted in order of importance.
 
-####Avoid overlapping reads
+#### Avoid overlapping reads
 
 In our experience, if insert lengths are so short that paired reads
 overlap on their 3’ ends, i.e., if insert length $<$ 2 $\cdot$ read
