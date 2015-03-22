@@ -17,7 +17,7 @@
     along with Oases. If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef FILTERTRANSCRIPTS_H_
-#define FILTERTRASNCRIPTS_H_
+#define FILTERTRANSCRIPTS_H_
 
 void removeRedundantTranscripts(Graph * graph);
 #endif 
