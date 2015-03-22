@@ -61,6 +61,8 @@ static void printUsage()
 	puts("\tdirectory\t\t\t: working directory name");
 	puts("");
 	puts("Standard options:");
+	puts("\t--help\t\t\t\t: this help message");
+	puts("\t--version\t\t\t: print version and exit");
 	puts("\t-ins_length2 <integer>\t\t: expected distance between two paired-end reads in the second short-read dataset (default: no read pairing)");
 	puts("\t-ins_length_long <integer>\t: expected distance between two long paired-end reads (default: no read pairing)");
 	puts("\t-ins_length*_sd <integer>\t: est. standard deviation of respective dataset (default: 10% of corresponding length)");
@@ -68,7 +70,7 @@ static void printUsage()
 	puts("\t-unused_reads <yes|no>\t\t: export unused reads in UnusedReads.fa file (default: no)");
 	puts("\t-amos_file <yes|no>\t\t: export assembly to AMOS file (default: no export)");
 	puts("\t-alignments <yes|no>\t\t: export a summary of contig alignment to the reference sequences (default: no)");
-	puts("\t--help\t\t\t\t: this help message");
+	puts("");
 	puts("Advanced options:");
 	puts("\t-cov_cutoff <floating-point>\t: removal of low coverage nodes AFTER tour bus or allow the system to infer it (default: 3)");
 	puts("\t-min_pair_count <integer>\t: minimum number of paired end connections to justify the scaffolding of two long contigs (default: 4)");
@@ -129,7 +131,7 @@ int main(int argc, char **argv)
 		puts("oases - De novo transcriptome assembler for the Velvet package");
 		printf("Version %i.%i.%2.2i\n", OASES_VERSION_NUMBER,
 		       OASES_RELEASE_NUMBER, OASES_UPDATE_NUMBER);
-		puts("\nCopyright 2009,2010 Daniel Zerbino (dzerbino@soe.ucsc.edu)");
+		puts("\nCopyright 2009- Daniel Zerbino (dzerbino@soe.ucsc.edu)");
 		puts("This is free software; see the source for copying conditions.  There is NO");
 		puts("warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 		puts("Compilation settings:");
@@ -158,6 +160,10 @@ int main(int argc, char **argv)
 	if (strcmp(argv[1], "--help") == 0) {
 		printUsage();
 		return 0;
+	}
+	if (strcmp(argv[1], "--version") == 0) {
+	        printf("oases %i.%i.%2.2i\n", OASES_VERSION_NUMBER, OASES_RELEASE_NUMBER, OASES_UPDATE_NUMBER);
+	        return 0;
 	}
 	// Memory allocation 
 	directory = argv[1];
