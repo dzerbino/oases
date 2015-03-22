@@ -91,7 +91,7 @@ Oases is then run on that directory:
 
 
 
-###Oases options
+##Oases options
 
 ### Oases help
 
@@ -163,14 +163,13 @@ Experiments have shown that K=27 works nicely for most organisms.
 Higher values for K should be used if problems with missassemblies are
 observed. 
 
-Assume we want to create a merged assembly in a folder called 
-```MergedAssembly```:
+Assume we want to create a merged assembly in a folder called ```MergedAssembly```:
 
     > velveth MergedAssembly/ K -long directory*/transcripts.fa
     > velvetg MergedAssembly/ -read_trkg yes -conserveLong yes
     > oases MergedAssembly/ -merge yes
 
-Note that the transcripts.fa files need to be given as *long*.
+Note that the ```transcripts.fa``` files need to be given as ```-long``` category.
 
 ### Using the supplied python script
 
