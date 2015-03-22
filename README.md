@@ -12,7 +12,7 @@ A good amount of physical memory (12GB to start with, more is no luxury) is reco
     > cd oases
     > make
     > ./oases --version
-    1.2.08
+    0.2.09
 
 ##Compilation options
 

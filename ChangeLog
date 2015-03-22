@@ -143,3 +143,7 @@ V 0.2.08
 
 V 0.2.09
 - Store stats in Log file
+- Use github submodule for Velvet dependencies
+- Migrate documentation to Markdown
+- Add --version option
+- Add --citation option

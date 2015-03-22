@@ -51,7 +51,7 @@
 
 static int OASES_VERSION_NUMBER = 0;
 static int OASES_RELEASE_NUMBER = 2;
-static int OASES_UPDATE_NUMBER = 8;
+static int OASES_UPDATE_NUMBER = 9;
 
 static void printUsage()
 {
