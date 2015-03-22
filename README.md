@@ -14,13 +14,6 @@ A good amount of physical memory (12GB to start with, more is no luxury) is reco
     > ./oases --version
     1.2.08
 
-##Quick Start
-
-    > velveth Dir 51 reads.fa
-    > velveth Dir -read_trkg yes
-    > oases Dir
-    > less Dir/transcripts.fa
-
 ##Compilation options
 
 There are various compile time options that can be used:
