@@ -279,9 +279,9 @@ consumption, sorted in order of importance.
 #### Avoid overlapping reads
 
 In our experience, if insert lengths are so short that paired reads
-overlap on their 3’ ends, i.e., if insert length $<$ 2 $\cdot$ read
-length, this prevents the early filtering of low coverage reads. This
-means that even small datasets may require huge amounts of memory. A way
+overlap on their 3’ ends, i.e., if the insert length is less than
+twice the length, this prevents the early filtering of low coverage reads. 
+This means that even small datasets may require huge amounts of memory. A way
 to avoid the problem is to join paired-end reads that overlap.
 One tool to do this is
  (PEAR)[http://sco.h-its.org/exelixis/web/software/pear/doc.html].
@@ -296,7 +296,7 @@ the ends of read sequences or remove entire read sequences, numerous
 packages exist to do that but differ in functionality and definition of
 bad quality.
 One tool to do this is
-(Trimmomatic)[http://www.usadellab.org/cms/?page=trimmomatic]
+[Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic)
 
 Note that when you use paired-end sequences and reads are discarded from
 the file you need to make sure that the fasta/fastq file that you give
@@ -309,14 +309,14 @@ give them as a second dataset of type ```-short``` to avoid data loss.
 Depending on your sequencing experiment, some of the reads may have
 adapters that were used, e.g, during library preparation. These adapters
 should be trimmed. Tools like
-(Trimmomatic)[http://www.usadellab.org/cms/?page=trimmomatic]
+[Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic)
 can also do this.
 
 #### Remove duplicate reads
 
 Especially for paired-end datasets it happens that the exact same read
 sequence is found a large number of times. One tool to do this is using
-(Picard)[http://broadinstitute.github.io/picard/].
+[Picard](http://broadinstitute.github.io/picard/).
 
 
 ### Oases does not give an expression level. How can I get that? 
