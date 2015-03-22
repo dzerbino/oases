@@ -1,0 +1,3 @@
+[submodule "velvet"]
+	path = velvet
+	url = https://github.com/dzerbino/velvet
