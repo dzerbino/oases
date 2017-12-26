@@ -212,7 +212,7 @@ transcripts of minimum length 100. We want to save the assemblies in
 folders that start with singleEnd :
 
     python scripts/oases_pipeline.py -m 21 -M 35 -o singleEnd 
-    -d ' -strand_specific yes data/test_reads.fa '
+    -d ' data/test_reads.fa -strand_specific '
     -p ' -min_trans_lgth 100 ' 
 
 The script creates a folder named singleEnd_k for each single-k
