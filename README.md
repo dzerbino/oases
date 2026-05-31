@@ -1,12 +1,14 @@
 
-#Oases
+# Oases
 _De novo_ transcriptome assembler based on the Velvet genome assembler core
 
-##Requirements
+## Requirements
 Oases should function on any standard 64 bit Unix environment with a C compiler.
 A good amount of physical memory (12GB to start with, more is no luxury) is recommended.
 
-##Installing Oases
+## Installing Oases
+
+### Old school
 
     > git clone --recursive https://github.com/dzerbino/oases
     > cd oases
@@ -14,7 +16,20 @@ A good amount of physical memory (12GB to start with, more is no luxury) is reco
     > ./oases --version
     0.2.09
 
-##Compilation options
+### Using Brew
+
+```
+brew tap brewsci/bio
+brew install oases
+```
+
+### Using Conda
+
+```
+conda install bioconda::oases
+```
+
+## Compilation options
 
 There are various compile time options that can be used:
 
@@ -34,12 +49,12 @@ You can apply them as in this example which changes three options:
     make OPENMP=1 CATEGORIES=4 MAXKMERLENGTH=192
 
 
-#Running Oases
+# Running Oases
 
 If you are not familiar with using Velvet, read Velvet’s manual first,
 as many references below will point to that document.
 
-##For impatient people
+## For impatient people
 
     # hash reads for k=31 and k=23
     > velveth directory 31,23 data/test_reads.fa
@@ -61,13 +76,13 @@ Or use the python script ```oases_pipeline.py```:
 
     > python scripts/oases_pipeline.py -m 21 -M 23 -d 'data/test_reads.fa'
 
-##For patient people
+## For patient people
 
 To run Oases it is recommended to run an array of single-_k_ assemblies,
 for different values of _k_ (i.e. the hash length). These assemblies are
 then merged into a final assembly.
 
-###Single-_k_ assemblies
+### Single-_k_ assemblies
 
 Each single-_k_ assembly consists of a simple Velvet run, followed by an
 Oases run. As in Velvet, the hash length _k_ is an odd integer. Velveth
@@ -91,7 +106,7 @@ Oases is then run on that directory:
 
 
 
-##Oases options
+## Oases options
 
 ### Oases help
 
